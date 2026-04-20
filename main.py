@@ -7,7 +7,12 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # loads .env file automatically
 
-from quantintel.graph import QuantIntelGraph
+from quantintel.mcp_graph import McpQuantIntelGraph
+import asyncio
+import sys
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+from langchain_mcp_adapters.tools import load_mcp_tools
 
 # ── config overrides (edit here) ──────────────────────────────────────────────
 config = {
@@ -15,11 +20,6 @@ config = {
     "deep_think_llm":  "gpt-4o-mini",             # Supervisor Agent (use an OpenRouter-served model)
     "quick_think_llm": "gpt-4o-mini",             # All other agents
 }
-# config = {
-#     "llm_provider":    "google",
-#     "deep_think_llm":  "gemini-2.5-flash",      # or gemini-1.0-pro, or gemini-2.5-flash if your key supports it
-#     "quick_think_llm": "gemini-2.5-flash",
-# }
 
 # ── optional portfolio context ─────────────────────────────────────────────────
 portfolio_context = {
@@ -29,43 +29,37 @@ portfolio_context = {
     "holdings":        ["MSFT", "GOOGL", "PLTR"],   # existing holdings for concentration check
 }
 
-# ── run ────────────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    print("=" * 62)
-    print("  QuantIntel — Multi-Agent Investment Analysis")
-    print("=" * 62)
+import os
 
-    qi = QuantIntelGraph(config=config, debug=False)
+async def async_main():
+    print("=" * 62)
+    print("  QuantIntel — Multi-Agent MCP Swarm Analysis")
+    print("=" * 62)
+    
+    python_cmd = os.path.abspath("venv/Scripts/python.exe")
+    if not os.path.exists(python_cmd):
+        python_cmd = sys.executable
 
-    result = qi.run(
-        ticker            = "INCY",          # ← change ticker here
-        trade_date        = "2026-03-23",    # ← change date here
-        portfolio_context = portfolio_context,
+    server_params = StdioServerParameters(
+        command=python_cmd,
+        args=["-m", "quantintel.mcp_servers.agent_swarm_server"],
+        env={**os.environ, "PYTHONPATH": os.path.abspath(".")}
     )
 
-    # result = qi.run(
-    #     ticker            = "PLTR",          # ← change ticker here
-    #     trade_date        = "2026-03-23",    # ← change date here
-    #     portfolio_context = portfolio_context,
-    # )
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            mcp_tools = await load_mcp_tools(session)
 
+            qi = McpQuantIntelGraph(session, mcp_tools, config=config, debug=True)
 
-    # Print individual agent reports
-    sections = [
-        ("AGENT 1 — FUNDAMENTALS", "fundamentals_report"),
-        ("AGENT 2 — SENTIMENT",    "sentiment_report"),
-        ("AGENT 3 — TECHNICAL",    "technical_report"),
-        ("AGENT 4 — RISK",         "risk_report"),
-        ("AGENT 5 — MACRO/REGIME", "macro_report"),
-    ]
+            result = await qi.run(
+                ticker            = "BA",          # ← ticker here
+                trade_date        = "2026-04-17",    # ← date here
+                portfolio_context = portfolio_context,
+            )
+            print("\n\nFINAL MCP RESULT:\n" + result["final_recommendation"])
 
-    for title, key in sections:
-        print(f"\n{'─' * 62}")
-        print(f"  {title}")
-        print(f"{'─' * 62}")
-        print(result.get(key, "Report not generated."))
-
-    print(f"\n{'=' * 62}")
-    print("  AGENT 6 — SUPERVISOR — FINAL RECOMMENDATION")
-    print(f"{'=' * 62}")
-    print(result.get("final_recommendation", "No recommendation generated."))
+# ── run ────────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    asyncio.run(async_main())
