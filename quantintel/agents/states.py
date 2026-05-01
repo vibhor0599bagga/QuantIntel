@@ -14,3 +14,5 @@ class QuantIntelState(MessagesState):
     macro_report:         Annotated[str,  "Macro/Regime agent output"]
     final_recommendation: Annotated[str,  "Supervisor final BUY/HOLD/SELL + rationale"]
     sender:               Annotated[str,  "Last agent that wrote to state"]
+    phase1_complete:      Annotated[bool, "Flag indicating Phase 1 completion"]
+    phase2_complete:      Annotated[bool, "Flag indicating Phase 2 completion"]
