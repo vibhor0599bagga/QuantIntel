@@ -39,9 +39,9 @@ def _extract_article_data(article: dict) -> dict:
 def get_news_yfinance(ticker: str, start_date: str, end_date: str) -> str:
     try:
         stock = yf.Ticker(ticker)
-        news  = stock.get_news(count=20)
+        news  = stock.get_news(count=100)
         if not news:
-            return f"No news found for {ticker}"
+            news = []
 
         start_dt = datetime.strptime(start_date, "%Y-%m-%d")
         end_dt   = datetime.strptime(end_date,   "%Y-%m-%d")
@@ -61,6 +61,23 @@ def get_news_yfinance(ticker: str, start_date: str, end_date: str) -> str:
                 news_str += f"Link: {data['link']}\n"
             news_str += "\n"
             filtered += 1
+
+        if filtered == 0:
+            search = yf.Search(query=ticker, news_count=100, enable_fuzzy_query=True)
+            if search.news:
+                for article in search.news:
+                    data = _extract_article_data(article)
+                    if data["pub_date"]:
+                        naive = data["pub_date"].replace(tzinfo=None)
+                        if not (start_dt <= naive <= end_dt + relativedelta(days=1)):
+                            continue
+                    news_str += f"### {data['title']} (source: {data['publisher']})\n"
+                    if data["summary"]:
+                        news_str += f"{data['summary']}\n"
+                    if data["link"]:
+                        news_str += f"Link: {data['link']}\n"
+                    news_str += "\n"
+                    filtered += 1
 
         if filtered == 0:
             return f"No news found for {ticker} between {start_date} and {end_date}"

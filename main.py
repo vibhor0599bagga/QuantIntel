@@ -55,7 +55,7 @@ async def async_main():
 
             result = await qi.run(
                 ticker            = "BA",          # ← ticker here
-                trade_date        = "2026-04-17",    # ← date here
+                trade_date        = "2026-05-13",    # ← date here
                 portfolio_context = portfolio_context,
             )
             print("\n\nFINAL MCP RESULT:\n" + result["final_recommendation"])

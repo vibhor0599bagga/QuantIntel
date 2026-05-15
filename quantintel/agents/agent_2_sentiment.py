@@ -18,8 +18,8 @@ Do NOT look at price charts or financial statements.
 Tool: get_news(ticker, start_date, end_date)
 
 Steps:
-1. Call get_news for the past 7 days.
-2. Call get_news again with broader keywords (CEO name, product, sector).
+1. Call get_news for the past 30 days from trade_date.
+2. Call get_news again over the same 30-day window with broader keywords (CEO name, product, sector).
 3. Analyse: overall tone, momentum, event catalysts, analyst opinion, social volume.
 4. Write a detailed sentiment report.
 5. End with EXACTLY this block:
