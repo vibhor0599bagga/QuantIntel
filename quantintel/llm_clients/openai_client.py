@@ -47,6 +47,9 @@ class OpenAIClient(BaseLLMClient):
         if self.provider == "openai":
             llm_kwargs["use_responses_api"] = True
 
+        if self.provider == "openrouter" and "max_tokens" not in llm_kwargs:
+            llm_kwargs["max_tokens"] = 6000
+
         return NormalizedChatOpenAI(**llm_kwargs)
 
     def validate_model(self) -> bool:
