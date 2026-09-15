@@ -1,0 +1,21 @@
+# Render Blueprint Specification for QuantIntel
+services:
+  - type: web
+    name: quantintel-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    plan: starter  # starter or free
+    region: oregon # oregon, frankfurt, singapore, etc.
+    autoDeploy: true
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: QUANTINTEL_RESULTS_DIR
+        value: ./results

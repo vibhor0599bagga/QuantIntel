@@ -54,8 +54,8 @@ async def async_main():
             qi = McpQuantIntelGraph(session, mcp_tools, config=config, debug=True)
 
             result = await qi.run(
-                ticker            = "BA",          # ← ticker here
-                trade_date        = "2026-05-13",    # ← date here
+                ticker            = "APPL",          # ← ticker here
+                trade_date        = "2026-09-14",    # ← date here
                 portfolio_context = portfolio_context,
             )
             print("\n\nFINAL MCP RESULT:\n" + result["final_recommendation"])

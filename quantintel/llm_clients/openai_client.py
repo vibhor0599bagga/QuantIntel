@@ -32,13 +32,18 @@ class OpenAIClient(BaseLLMClient):
             base_url, api_key_env = _PROVIDER_CONFIG[self.provider]
             llm_kwargs["base_url"] = base_url
             if api_key_env:
-                api_key = os.environ.get(api_key_env)
-                if api_key:
-                    llm_kwargs["api_key"] = api_key
+                api_key = os.environ.get(api_key_env) or os.environ.get("OPENAI_API_KEY") or "placeholder_key"
+                llm_kwargs["api_key"] = api_key
             else:
                 llm_kwargs["api_key"] = "ollama"
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
+            if "api_key" not in llm_kwargs:
+                llm_kwargs["api_key"] = os.environ.get("OPENAI_API_KEY") or "placeholder_key"
+        else:
+            if "api_key" not in llm_kwargs and not os.environ.get("OPENAI_API_KEY"):
+                llm_kwargs["api_key"] = "placeholder_key"
+
 
         for key in _PASSTHROUGH:
             if key in self.kwargs:

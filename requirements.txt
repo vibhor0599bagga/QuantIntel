@@ -20,3 +20,14 @@ rank-bm25>=0.2.2
 
 # Utilities
 python-dotenv>=1.0.0
+
+# API & Web Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+sse-starlette>=2.0.0
+pydantic>=2.0.0
+
+# Model Context Protocol (MCP)
+mcp>=1.0.0
+langchain-mcp-adapters>=0.1.0
+

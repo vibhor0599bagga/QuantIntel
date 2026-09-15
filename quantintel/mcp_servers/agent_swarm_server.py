@@ -1,7 +1,11 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from mcp.server.fastmcp import FastMCP
 from typing import Dict, Any
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
+
 
 from quantintel.config import DEFAULT_CONFIG, set_config
 from quantintel.llm_clients import create_llm_client
