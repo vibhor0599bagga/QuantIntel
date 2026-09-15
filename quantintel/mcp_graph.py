@@ -48,6 +48,14 @@ class McpQuantIntelGraph:
         except Exception as e:
             return f"ERROR executing {tool_name}: {str(e)}"
 
+    async def _execute_tool_with_timeout(self, tool_name: str, timeout: float = 25.0, **kwargs) -> str:
+        try:
+            return await asyncio.wait_for(self._execute_tool(tool_name, **kwargs), timeout=timeout)
+        except asyncio.TimeoutError:
+            return f"[TIMED OUT: {tool_name} did not respond within {timeout}s. Proceeding with remaining agent context.]"
+        except Exception as e:
+            return f"[ERROR executing {tool_name}: {str(e)}]"
+
     async def _phase1_parallel_agents(self, state: QuantIntelState) -> dict:
         """
         PHASE 1: Execute all 4 data-gathering agents IN PARALLEL
@@ -60,15 +68,16 @@ class McpQuantIntelGraph:
         print("[PHASE 1] PARALLEL DATA GATHERING (All 4 agents run concurrently)")
         print("="*80)
         
-        # Execute all 4 agents CONCURRENTLY using asyncio.gather()
+        # Execute all 4 agents CONCURRENTLY with 25s timeouts using asyncio.gather()
         tasks = [
-            self._execute_tool("ask_fundamentals_agent", ticker=ticker, trade_date=trade_date),
-            self._execute_tool("ask_sentiment_agent", ticker=ticker, trade_date=trade_date),
-            self._execute_tool("ask_technical_agent", ticker=ticker, trade_date=trade_date),
-            self._execute_tool("ask_macro_agent", ticker=ticker, trade_date=trade_date),
+            self._execute_tool_with_timeout("ask_fundamentals_agent", timeout=25.0, ticker=ticker, trade_date=trade_date),
+            self._execute_tool_with_timeout("ask_sentiment_agent", timeout=25.0, ticker=ticker, trade_date=trade_date),
+            self._execute_tool_with_timeout("ask_technical_agent", timeout=25.0, ticker=ticker, trade_date=trade_date),
+            self._execute_tool_with_timeout("ask_macro_agent", timeout=25.0, ticker=ticker, trade_date=trade_date),
         ]
         
         fundamentals_report, sentiment_report, technical_report, macro_report = await asyncio.gather(*tasks)
+
         
         # Print each report with clear separation
         print("\n" + "-"*80)
@@ -133,7 +142,8 @@ class McpQuantIntelGraph:
                 available_tools = list(self.tools_dict.keys())
                 risk_report = f"ERROR: ask_risk_agent not found. Available tools: {available_tools}"
             else:
-                risk_report = await self._execute_tool("ask_risk_agent", **kwargs)
+                risk_report = await self._execute_tool_with_timeout("ask_risk_agent", timeout=25.0, **kwargs)
+
             
             print("\n" + "-"*80)
             print("[AGENT 5] RISK OUTPUT:")

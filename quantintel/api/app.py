@@ -242,4 +242,12 @@ async def stream_stock_analysis(req: AnalysisRequest):
                 "data": json.dumps({"error": str(e)})
             }
 
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(
+        event_generator(),
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        }
+    )
+
