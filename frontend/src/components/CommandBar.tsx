@@ -83,8 +83,9 @@ export const CommandBar: React.FC<CommandBarProps> = ({
                 className="px-5 py-2.5 bg-[#ff3333]/20 border border-[#ff3333] text-[#ff3333] hover:bg-[#ff3333]/30 rounded font-mono font-bold text-xs flex items-center gap-2 transition-all shadow-[0_0_10px_rgba(255,51,51,0.2)]"
               >
                 <Square className="w-3.5 h-3.5 fill-current" />
-                ABORT SWARM
+                ABORT ANALYSIS
               </button>
+
             ) : (
               <button
                 type="submit"
