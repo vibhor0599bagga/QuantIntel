@@ -42,6 +42,7 @@ export default function Home() {
         const res = await fetch(`${API_BASE_URL}/health`);
         if (res.ok) {
           const data = await res.json();
+          console.log("🌐 [QuantIntel API] Live Health Status:", data);
           if (data.status === "ok") {
             setApiStatus("connected");
           } else {
@@ -50,6 +51,7 @@ export default function Home() {
         } else {
           setApiStatus("offline");
         }
+
       } catch (err) {
         console.warn("API Health Check Warning:", err);
         setApiStatus("offline");
@@ -152,12 +154,15 @@ export default function Home() {
             const data = JSON.parse(dataStr);
             const time = new Date().toLocaleTimeString();
 
+            console.log(`[QuantIntel API] Event: "${eventType}"`, data);
+
             setStreamState((prev) => ({
               ...prev,
               logs: [...prev.logs, `[${time}] EVENT ${eventType}: ${JSON.stringify(data).slice(0, 100)}...`],
             }));
 
             if (eventType === "phase1_complete") {
+              console.log("📊 Phase 1 Data Received:", data);
               setFundamentalsReport(data.fundamentals_report || "");
               setSentimentReport(data.sentiment_report || "");
               setTechnicalReport(data.technical_report || "");
@@ -168,6 +173,7 @@ export default function Home() {
                 phase1Complete: true,
               }));
             } else if (eventType === "phase2_complete") {
+              console.log("🛡️ Phase 2 Risk Report Received:", data);
               setRiskReport(data.risk_report || "");
               setStreamState((prev) => ({
                 ...prev,
@@ -175,12 +181,14 @@ export default function Home() {
                 phase2Complete: true,
               }));
             } else if (eventType === "final_recommendation") {
+              console.log("🏆 Phase 3 Supervisor Final Recommendation Received:", data);
               setFinalRecommendation(data.final_recommendation || "");
               setStreamState((prev) => ({
                 ...prev,
                 phase3Complete: true,
               }));
             } else if (eventType === "complete") {
+              console.log("✅ Analysis Pipeline Fully Completed!");
               setStreamState((prev) => ({
                 ...prev,
                 isAnalyzing: false,
@@ -191,6 +199,7 @@ export default function Home() {
           } catch (e) {
             console.error("SSE JSON Parse error:", e, dataStr);
           }
+
         }
       }
     } catch (err: any) {
