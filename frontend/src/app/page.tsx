@@ -34,6 +34,7 @@ export default function Home() {
   const [finalRecommendation, setFinalRecommendation] = useState("");
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
   // Health check on mount
   useEffect(() => {
@@ -61,13 +62,23 @@ export default function Home() {
   }, []);
 
   const handleStopAnalysis = () => {
+    console.log("🛑 [QuantIntel API] User clicked ABORT ANALYSIS");
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
+    if (readerRef.current) {
+      try {
+        readerRef.current.cancel();
+        readerRef.current = null;
+      } catch (e) {
+        console.warn("Stream reader cancel warning:", e);
+      }
+    }
     setStreamState((prev) => ({
       ...prev,
       isAnalyzing: false,
+      currentPhase: 0,
       logs: [...prev.logs, "[ABORT] Analysis aborted by user."],
     }));
   };
@@ -121,6 +132,8 @@ export default function Home() {
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body reader available.");
+      readerRef.current = reader;
+
 
       const decoder = new TextDecoder();
       let buffer = "";
