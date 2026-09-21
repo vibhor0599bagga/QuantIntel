@@ -15,10 +15,8 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   tradeDate,
   recommendationText,
 }) => {
-  if (!recommendationText) return null;
-
-  // Simple parsing logic for stance & conviction
-  const upperText = recommendationText.toUpperCase();
+  // Parsing logic for stance & conviction
+  const upperText = (recommendationText || "").toUpperCase();
   let stance: "BUY" | "SELL" | "HOLD" = "HOLD";
   if (upperText.includes("BUY") && !upperText.includes("DO NOT BUY")) {
     stance = "BUY";
@@ -26,17 +24,23 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
     stance = "SELL";
   }
 
-  // Trigger confetti on BUY
+  // Trigger confetti on BUY unconditionally at the top level
   useEffect(() => {
-    if (stance === "BUY") {
-      confetti({
-        particleCount: 70,
-        spread: 60,
-        origin: { y: 0.6 },
-        colors: ["#00ff66", "#00e5ff", "#ff9d00"],
-      });
+    if (recommendationText && stance === "BUY") {
+      try {
+        confetti({
+          particleCount: 70,
+          spread: 60,
+          origin: { y: 0.6 },
+          colors: ["#00ff66", "#00e5ff", "#ff9d00"],
+        });
+      } catch (err) {
+        console.warn("Confetti error:", err);
+      }
     }
-  }, [stance]);
+  }, [stance, recommendationText]);
+
+  if (!recommendationText) return null;
 
   const handleDownload = () => {
     const element = document.createElement("a");
