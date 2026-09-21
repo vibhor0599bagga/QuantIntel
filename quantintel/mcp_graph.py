@@ -1,5 +1,6 @@
 # quantintel/mcp_graph.py
 import asyncio
+from datetime import datetime
 from langchain_core.messages import HumanMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
@@ -36,15 +37,45 @@ class McpQuantIntelGraph:
         # Build a tools dict for easy lookup
         self.tools_dict = {tool.name: tool for tool in mcp_tools}
 
+    def _extract_text_content(self, val) -> str:
+        """Extract pure text from various MCP result structures (lists, dicts, TextContent, AST string representations)."""
+        if val is None:
+            return ""
+        if isinstance(val, str):
+            trimmed = val.strip()
+            if (trimmed.startswith("[{") and trimmed.endswith("}]")) or (trimmed.startswith("[TextContent(")):
+                try:
+                    import ast
+                    parsed = ast.literal_eval(trimmed)
+                    if isinstance(parsed, list):
+                        return self._extract_text_content(parsed)
+                except Exception:
+                    pass
+            return val
+        if isinstance(val, list):
+            extracted = [self._extract_text_content(item) for item in val]
+            return "\n".join(e for e in extracted if e)
+        if isinstance(val, dict):
+            if "text" in val:
+                return str(val["text"])
+            if "content" in val:
+                return self._extract_text_content(val["content"])
+            return str(val)
+        if hasattr(val, "text"):
+            return str(getattr(val, "text"))
+        if hasattr(val, "content"):
+            return self._extract_text_content(getattr(val, "content"))
+        return str(val)
+
     async def _execute_tool(self, tool_name: str, **kwargs) -> str:
-        """Execute a single MCP tool and return the result as a string."""
+        """Execute a single MCP tool and return the clean text result."""
         if tool_name not in self.tools_dict:
             return f"ERROR: Tool '{tool_name}' not found"
         
         tool = self.tools_dict[tool_name]
         try:
-            result = await tool.ainvoke(kwargs)
-            return result if isinstance(result, str) else str(result)
+            raw_result = await tool.ainvoke(kwargs)
+            return self._extract_text_content(raw_result)
         except Exception as e:
             return f"ERROR executing {tool_name}: {str(e)}"
 
@@ -259,11 +290,12 @@ Provide your FINAL RECOMMENDATION with:
         
         return wf.compile()
 
-    async def run(self, ticker: str, trade_date: str, portfolio_context: dict = None) -> dict:
+    async def run(self, ticker: str, trade_date: str = None, portfolio_context: dict = None) -> dict:
+        resolved_date = str(trade_date or datetime.now().strftime("%Y-%m-%d"))
         initial_state = {
             "messages":             [HumanMessage(content=f"Recommend action for {ticker}")],
             "ticker":               ticker,
-            "trade_date":           str(trade_date),
+            "trade_date":           resolved_date,
             "portfolio_context":    portfolio_context or {},
             "fundamentals_report":  "",
             "sentiment_report":     "",

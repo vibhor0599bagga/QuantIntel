@@ -7,13 +7,49 @@ import { StreamProgress, StreamState } from "@/components/StreamProgress";
 import { VerdictHero } from "@/components/VerdictHero";
 import { AgentGrid } from "@/components/AgentGrid";
 import { RawTerminal } from "@/components/RawTerminal";
+import { getTodayDateString } from "@/components/CalendarPicker";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://quantintel.onrender.com";
+
+// Helper to extract clean Markdown text from tool results or JSON structures
+const cleanReport = (val: any): string => {
+  if (!val) return "";
+  if (typeof val !== "string") return String(val);
+
+  let trimmed = val.trim();
+  // Handle stringified Python AST or list of TextContent/dicts like "[{'type': 'text', 'text': '...'}]"
+  if ((trimmed.startsWith("[{") && trimmed.endsWith("}]")) || (trimmed.startsWith("[TextContent(") && trimmed.endsWith(")]"))) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => item.text || item.content || JSON.stringify(item)).join("\n\n");
+      }
+    } catch {
+      // Python dict syntax with single quotes
+      const regex = /'text':\s*'([\s\S]*?)'(?:,\s*'type'|\})/g;
+      const matches: string[] = [];
+      let match;
+      while ((match = regex.exec(trimmed)) !== null) {
+        matches.push(
+          match[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\'/g, "'")
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, "\\")
+        );
+      }
+      if (matches.length > 0) {
+        return matches.join("\n\n");
+      }
+    }
+  }
+  return trimmed;
+};
 
 export default function Home() {
   const [apiStatus, setApiStatus] = useState<"connected" | "connecting" | "offline">("connecting");
   const [ticker, setTicker] = useState("AAPL");
-  const [tradeDate, setTradeDate] = useState("2026-09-14");
+  const [tradeDate, setTradeDate] = useState(() => getTodayDateString());
 
   // Stream State
   const [streamState, setStreamState] = useState<StreamState>({
@@ -46,6 +82,9 @@ export default function Home() {
           console.log("🌐 [QuantIntel API] Live Health Status:", data);
           if (data.status === "ok") {
             setApiStatus("connected");
+            if (data.server_date) {
+              setTradeDate(data.server_date);
+            }
           } else {
             setApiStatus("offline");
           }
@@ -134,7 +173,6 @@ export default function Home() {
       if (!reader) throw new Error("No response body reader available.");
       readerRef.current = reader;
 
-
       const decoder = new TextDecoder();
       let buffer = "";
 
@@ -143,25 +181,35 @@ export default function Home() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n\n");
-        buffer = lines.pop() || "";
+        
+        // Split by standard SSE double-newline message delimiter
+        const normalized = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        const messageBlocks = normalized.split("\n\n");
+        buffer = messageBlocks.pop() || "";
 
-        for (const line of lines) {
-          if (!line.trim()) continue;
+        for (const block of messageBlocks) {
+          if (!block.trim()) continue;
 
           let eventType = "message";
-          let dataStr = "";
+          const dataLines: string[] = [];
 
-          const lineParts = line.split("\n");
-          for (const part of lineParts) {
-            if (part.startsWith("event:")) {
-              eventType = part.replace("event:", "").trim();
-            } else if (part.startsWith("data:")) {
-              dataStr += part.replace("data:", "").trim();
+          const lines = block.split("\n");
+          for (const line of lines) {
+            if (line.startsWith(":")) {
+              // Ignore SSE ping/comment lines
+              continue;
+            }
+            if (line.startsWith("event:")) {
+              eventType = line.slice(6).trim();
+            } else if (line.startsWith("data:")) {
+              let d = line.slice(5);
+              if (d.startsWith(" ")) d = d.slice(1);
+              dataLines.push(d);
             }
           }
 
-          if (!dataStr) continue;
+          if (dataLines.length === 0) continue;
+          const dataStr = dataLines.join("\n");
 
           try {
             const data = JSON.parse(dataStr);
@@ -174,12 +222,16 @@ export default function Home() {
               logs: [...prev.logs, `[${time}] EVENT ${eventType}: ${JSON.stringify(data).slice(0, 100)}...`],
             }));
 
-            if (eventType === "phase1_complete") {
+            if (eventType === "start") {
+              if (data.trade_date) {
+                setTradeDate(data.trade_date);
+              }
+            } else if (eventType === "phase1_complete") {
               console.log("📊 Phase 1 Data Received:", data);
-              setFundamentalsReport(data.fundamentals_report || "");
-              setSentimentReport(data.sentiment_report || "");
-              setTechnicalReport(data.technical_report || "");
-              setMacroReport(data.macro_report || "");
+              setFundamentalsReport(cleanReport(data.fundamentals_report));
+              setSentimentReport(cleanReport(data.sentiment_report));
+              setTechnicalReport(cleanReport(data.technical_report));
+              setMacroReport(cleanReport(data.macro_report));
               setStreamState((prev) => ({
                 ...prev,
                 currentPhase: 2,
@@ -187,7 +239,7 @@ export default function Home() {
               }));
             } else if (eventType === "phase2_complete") {
               console.log("🛡️ Phase 2 Risk Report Received:", data);
-              setRiskReport(data.risk_report || "");
+              setRiskReport(cleanReport(data.risk_report));
               setStreamState((prev) => ({
                 ...prev,
                 currentPhase: 3,
@@ -195,7 +247,7 @@ export default function Home() {
               }));
             } else if (eventType === "final_recommendation") {
               console.log("🏆 Phase 3 Supervisor Final Recommendation Received:", data);
-              setFinalRecommendation(data.final_recommendation || "");
+              setFinalRecommendation(cleanReport(data.final_recommendation));
               setStreamState((prev) => ({
                 ...prev,
                 phase3Complete: true,
@@ -212,7 +264,6 @@ export default function Home() {
           } catch (e) {
             console.error("SSE JSON Parse error:", e, dataStr);
           }
-
         }
       }
     } catch (err: any) {
@@ -239,6 +290,7 @@ export default function Home() {
           onRunAnalysis={handleRunAnalysis}
           onStopAnalysis={handleStopAnalysis}
           isAnalyzing={streamState.isAnalyzing}
+          defaultTradeDate={tradeDate}
         />
 
         {/* Live Swarm Execution Progress Tracker */}

@@ -10,6 +10,7 @@ load_dotenv()  # loads .env file automatically
 from quantintel.mcp_graph import McpQuantIntelGraph
 import asyncio
 import sys
+from datetime import datetime
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -54,8 +55,8 @@ async def async_main():
             qi = McpQuantIntelGraph(session, mcp_tools, config=config, debug=True)
 
             result = await qi.run(
-                ticker            = "APPL",          # ← ticker here
-                trade_date        = "2026-09-14",    # ← date here
+                ticker            = "AAPL",
+                trade_date        = datetime.now().strftime("%Y-%m-%d"),
                 portfolio_context = portfolio_context,
             )
             print("\n\nFINAL MCP RESULT:\n" + result["final_recommendation"])

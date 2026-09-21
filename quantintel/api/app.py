@@ -107,7 +107,8 @@ async def health_check():
     return HealthResponse(
         status="ok",
         version="1.0.0",
-        mcp_server=mcp_status
+        mcp_server=mcp_status,
+        server_date=datetime.now().strftime("%Y-%m-%d")
     )
 
 

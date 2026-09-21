@@ -33,3 +33,4 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     mcp_server: str
+    server_date: Optional[str] = None
