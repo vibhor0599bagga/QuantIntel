@@ -15,6 +15,8 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   tradeDate,
   recommendationText,
 }) => {
+  const [copied, setCopied] = React.useState(false);
+
   // Parsing logic for stance & conviction
   const upperText = (recommendationText || "").toUpperCase();
   let stance: "BUY" | "SELL" | "HOLD" = "HOLD";
@@ -24,13 +26,17 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
     stance = "SELL";
   }
 
+  // Extract conviction if available
+  const convictionMatch = upperText.match(/CONVICTION\s*(?:LEVEL)?:\s*([0-9\.]+)/i);
+  const conviction = convictionMatch ? convictionMatch[1] : null;
+
   // Trigger confetti on BUY unconditionally at the top level
   useEffect(() => {
     if (recommendationText && stance === "BUY") {
       try {
         confetti({
-          particleCount: 70,
-          spread: 60,
+          particleCount: 80,
+          spread: 70,
           origin: { y: 0.6 },
           colors: ["#00ff66", "#00e5ff", "#ff9d00"],
         });
@@ -41,6 +47,12 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   }, [stance, recommendationText]);
 
   if (!recommendationText) return null;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(recommendationText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleDownload = () => {
     const element = document.createElement("a");
@@ -55,39 +67,45 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   };
 
   return (
-    <div className="w-full bt-panel p-6 mb-6 relative overflow-hidden border-2 border-[#ff9d00]/40 shadow-[0_0_30px_rgba(255,157,0,0.15)]">
+    <div className="w-full bt-panel p-6 sm:p-8 mb-8 relative overflow-hidden border-2 border-[#ff9d00]/50 shadow-[0_0_36px_rgba(255,157,0,0.18)]">
       {/* Background Accent Glow */}
       <div
-        className={`absolute -right-20 -top-20 w-64 h-64 rounded-full blur-3xl opacity-20 pointer-events-none ${
+        className={`absolute -right-24 -top-24 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none ${
           stance === "BUY" ? "bg-[#00ff66]" : stance === "SELL" ? "bg-[#ff3333]" : "bg-[#ffd700]"
         }`}
       />
 
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1a2333] pb-4 mb-5">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-[#ff9d00]/10 border border-[#ff9d00]/40 rounded text-[#ff9d00]">
-            <Award className="w-6 h-6" />
+      <div className="flex flex-wrap items-center justify-between gap-5 border-b border-[#1a2333] pb-6 mb-6">
+        <div className="flex items-center gap-4">
+          <div className="p-3.5 bg-[#ff9d00]/15 border border-[#ff9d00]/50 rounded-lg text-[#ff9d00] shadow-[0_0_15px_rgba(255,157,0,0.2)]">
+            <Award className="w-7 h-7" />
           </div>
           <div>
-            <div className="text-[11px] font-mono text-[#64748b] tracking-widest uppercase">
+            <div className="text-xs font-mono text-[#8492a6] tracking-widest uppercase font-bold mb-1">
               SUPERVISOR DECISION SYNTHESIS
             </div>
-            <h2 className="text-xl font-mono font-bold text-[#e2e8f0]">
+            <h2 className="text-xl sm:text-2xl font-mono font-black text-[#e2e8f0] tracking-wide">
               TARGET TICKER: <span className="text-[#00e5ff]">{ticker}</span>
             </h2>
           </div>
         </div>
 
-        {/* Stance Badge & Download */}
-        <div className="flex items-center gap-3">
+        {/* Stance Badge & Actions */}
+        <div className="flex flex-wrap items-center gap-3.5">
+          {conviction && (
+            <div className="px-3.5 py-2 rounded-lg bg-[#0d121d] border border-[#1e293b] text-xs font-mono font-bold text-[#8492a6]">
+              CONVICTION: <span className="text-[#00e5ff] font-extrabold">{conviction}</span>
+            </div>
+          )}
+
           <div
-            className={`px-5 py-2 rounded text-base font-mono font-extrabold flex items-center gap-2 ${
+            className={`px-6 py-2.5 rounded-lg text-sm sm:text-base font-mono font-black flex items-center gap-2.5 tracking-wider shadow-lg ${
               stance === "BUY"
-                ? "bt-badge-buy text-lg"
+                ? "bt-badge-buy"
                 : stance === "SELL"
-                ? "bt-badge-sell text-lg"
-                : "bt-badge-hold text-lg"
+                ? "bt-badge-sell"
+                : "bt-badge-hold"
             }`}
           >
             {stance === "BUY" ? (
@@ -97,29 +115,37 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
             ) : (
               <MinusCircle className="w-5 h-5" />
             )}
-            RECOMMENDATION: {stance}
+            <span>RECOMMENDATION: {stance}</span>
           </div>
 
           <button
+            onClick={handleCopy}
+            className="h-10 px-3.5 bg-[#0f172a] border border-[#1e293b] hover:border-[#ff9d00] text-[#94a3b8] hover:text-[#ff9d00] rounded-lg font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+            title="Copy Report"
+          >
+            {copied ? "COPIED!" : "COPY"}
+          </button>
+
+          <button
             onClick={handleDownload}
-            className="p-2 bg-[#0f172a] border border-[#1e293b] hover:border-[#ff9d00] text-[#94a3b8] hover:text-[#ff9d00] rounded font-mono text-xs transition-colors flex items-center gap-1.5"
+            className="h-10 px-4 bg-[#0f172a] border border-[#1e293b] hover:border-[#ff9d00] text-[#94a3b8] hover:text-[#ff9d00] rounded-lg font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
             title="Download Full Report"
           >
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">EXPORT</span>
+            <span>EXPORT</span>
           </button>
         </div>
       </div>
 
       {/* Rationale Body */}
-      <div className="font-mono text-xs leading-relaxed text-[#cbd5e1] whitespace-pre-line bg-[#080c14] p-5 rounded border border-[#1a2333] max-h-[400px] overflow-y-auto">
+      <div className="font-mono text-xs sm:text-sm leading-relaxed text-[#cbd5e1] whitespace-pre-line bg-[#070b12] p-6 rounded-lg border border-[#1a2333] max-h-[500px] overflow-y-auto space-y-3 selection:bg-[#ff9d00]/30 selection:text-white">
         {recommendationText}
       </div>
 
       {/* Signal Weights Legend */}
-      <div className="mt-4 pt-3 border-t border-[#1a2333] flex flex-wrap items-center justify-between text-[11px] font-mono text-[#64748b]">
-        <span>WEIGHTING: Fundamentals (40%) | Risk (30%) | Macro (20%) | Tech+Sent (10%)</span>
-        <span className="text-[#00e5ff]">DATE: {tradeDate}</span>
+      <div className="mt-5 pt-4 border-t border-[#1a2333] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[#8492a6]">
+        <span className="font-semibold">WEIGHTING: Fundamentals (40%) | Risk (30%) | Macro (20%) | Tech+Sent (10%)</span>
+        <span className="text-[#00e5ff] font-bold">DATE: {tradeDate}</span>
       </div>
     </div>
   );

@@ -37,58 +37,60 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
   }, []);
 
   return (
-    <header className="w-full bg-[#080c14] border-b border-[#1a2333] sticky top-0 z-50">
-      {/* Top Banner */}
-      <div className="max-w-[1700px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-[#141b27]">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-[#ff9d00]/10 border border-[#ff9d00]/40 rounded text-[#ff9d00]">
-            <TerminalIcon className="w-4 h-4 animate-pulse" />
-            <span className="font-bold tracking-wider text-xs">QUANTINTEL TERMINAL v1.0</span>
+    <header className="w-full bg-[#080c14] border-b border-[#1a2333] sticky top-0 z-40 shadow-lg">
+      {/* Top Banner Row */}
+      <div className="max-w-[1700px] mx-auto px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
+        {/* Left Branding */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-[#ff9d00]/15 border border-[#ff9d00]/50 rounded-md text-[#ff9d00] shadow-[0_0_12px_rgba(255,157,0,0.15)]">
+            <TerminalIcon className="w-4 h-4 animate-pulse text-[#ff9d00]" />
+            <span className="font-extrabold tracking-wider text-sm">QUANTINTEL TERMINAL v1.0</span>
           </div>
-          <span className="hidden md:inline text-xs text-[#94a3b8] font-medium border-l border-[#1e293b] pl-3">
-            GEN AI-POWERED MULTI-AGENT PLATFORM FOR FINANCIAL MARKETS
+          <span className="hidden lg:inline text-xs text-[#8492a6] font-medium border-l border-[#1e293b] pl-4">
+            GEN AI MULTI-AGENT SWARM PLATFORM FOR QUANTITATIVE FINANCE
           </span>
         </div>
 
-        {/* Action / Server Connection Indicator */}
+        {/* Right Status / Actions */}
         <div className="flex items-center gap-3 text-xs font-mono">
-          {/* User OpenRouter Key Trigger */}
+          {/* User OpenRouter Key Button */}
           <button
             onClick={onOpenKeyModal}
-            className={`flex items-center gap-2 px-3 py-1 rounded border transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md border text-xs font-bold transition-all cursor-pointer shadow-sm ${
               hasApiKey
-                ? "bg-[#00ff66]/10 border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20"
-                : "bg-[#ff9d00]/15 border-[#ff9d00]/50 text-[#ff9d00] hover:bg-[#ff9d00]/25 animate-pulse"
+                ? "bg-[#00ff66]/10 border-[#00ff66]/50 text-[#00ff66] hover:bg-[#00ff66]/20 shadow-[0_0_10px_rgba(0,255,102,0.15)]"
+                : "bg-[#ff9d00]/15 border-[#ff9d00]/60 text-[#ff9d00] hover:bg-[#ff9d00]/25 animate-pulse shadow-[0_0_12px_rgba(255,157,0,0.25)]"
             }`}
             title="Configure OpenRouter API Key"
           >
             <Key className="w-3.5 h-3.5" />
-            <span className="font-bold">
-              {hasApiKey ? "KEY: CONFIGURED" : "🔑 SET OPENROUTER KEY"}
-            </span>
+            <span>{hasApiKey ? "KEY: CONFIGURED" : "🔑 SET OPENROUTER KEY"}</span>
           </button>
 
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#0f172a] border border-[#1e293b]">
+          {/* Render API Connection Indicator */}
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-md bg-[#0d121d] border border-[#1e293b]">
             <Radio className={`w-3.5 h-3.5 ${apiStatus === "connected" ? "text-[#00ff66] animate-pulse" : apiStatus === "connecting" ? "text-[#ffd700] animate-spin" : "text-[#ff3333]"}`} />
-            <span className="text-[#94a3b8]">API:</span>
-            <span className={apiStatus === "connected" ? "text-[#00ff66] font-bold" : apiStatus === "connecting" ? "text-[#ffd700]" : "text-[#ff3333]"}>
+            <span className="text-[#8492a6]">API:</span>
+            <span className={`font-bold ${apiStatus === "connected" ? "text-[#00ff66]" : apiStatus === "connecting" ? "text-[#ffd700]" : "text-[#ff3333]"}`}>
               {apiStatus.toUpperCase()}
             </span>
           </div>
-          <span className="text-[#64748b] hidden sm:inline">{timeStr}</span>
+
+          <span className="text-[#64748b] hidden sm:inline pl-2 border-l border-[#1e293b]">{timeStr}</span>
         </div>
       </div>
 
-      {/* Marquee Ticker Tape */}
-      <div className="overflow-hidden bg-[#040609] py-1.5 border-b border-[#121824] flex items-center">
-        <div className="flex items-center gap-1 px-3 py-0.5 bg-[#ff9d00]/15 text-[#ff9d00] text-[10px] font-bold tracking-widest shrink-0 border-r border-[#ff9d00]/30 z-10">
-          <Activity className="w-3 h-3" /> LIVE MARKETS
+      {/* Marquee Ticker Tape Container (Strictly isolated to prevent any visual overlap) */}
+      <div className="w-full bg-[#040609] border-t border-b border-[#141b27] py-2 px-4 overflow-hidden relative flex items-center">
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-[#ff9d00]/15 text-[#ff9d00] text-[11px] font-bold tracking-widest shrink-0 border-r border-[#ff9d00]/30 z-10 mr-4 rounded-sm">
+          <Activity className="w-3.5 h-3.5 animate-pulse" /> LIVE MARKETS
         </div>
-        <div className="animate-marquee flex items-center gap-8 text-xs font-mono">
+
+        <div className="animate-marquee flex items-center gap-10 text-xs font-mono select-none">
           {TICKER_DATA.concat(TICKER_DATA).map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2 shrink-0">
+            <div key={idx} className="flex items-center gap-2.5 shrink-0 px-2 py-0.5 rounded bg-[#090d15] border border-[#141b27]">
               <span className="text-[#e2e8f0] font-bold">{item.symbol}</span>
-              <span className="text-[#94a3b8]">{item.price}</span>
+              <span className="text-[#8492a6]">{item.price}</span>
               <span className={`font-bold ${item.up ? "text-[#00ff66]" : "text-[#ff3333]"}`}>
                 {item.pct}
               </span>
