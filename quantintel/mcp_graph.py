@@ -25,10 +25,13 @@ class McpQuantIntelGraph:
         self.config = {**DEFAULT_CONFIG, **(config or {})}
         set_config(self.config)
 
+        self.api_key = self.config.get("api_key") or self.config.get("openrouter_api_key") or ""
+
         self.deep_llm = create_llm_client(
             provider = self.config["llm_provider"],
             model    = self.config["deep_think_llm"],
             base_url = self.config.get("backend_url"),
+            api_key  = self.api_key if self.api_key else None,
         ).get_llm()
         self.memory = FinancialSituationMemory("mcp_memory")
         self.session = session
@@ -101,10 +104,10 @@ class McpQuantIntelGraph:
         
         # Execute all 4 agents CONCURRENTLY with 60s (1 min) timeouts using asyncio.gather()
         tasks = [
-            self._execute_tool_with_timeout("ask_fundamentals_agent", timeout=60.0, ticker=ticker, trade_date=trade_date),
-            self._execute_tool_with_timeout("ask_sentiment_agent", timeout=60.0, ticker=ticker, trade_date=trade_date),
-            self._execute_tool_with_timeout("ask_technical_agent", timeout=60.0, ticker=ticker, trade_date=trade_date),
-            self._execute_tool_with_timeout("ask_macro_agent", timeout=60.0, ticker=ticker, trade_date=trade_date),
+            self._execute_tool_with_timeout("ask_fundamentals_agent", timeout=60.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
+            self._execute_tool_with_timeout("ask_sentiment_agent", timeout=60.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
+            self._execute_tool_with_timeout("ask_technical_agent", timeout=60.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
+            self._execute_tool_with_timeout("ask_macro_agent", timeout=60.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
         ]
         
         fundamentals_report, sentiment_report, technical_report, macro_report = await asyncio.gather(*tasks)
@@ -166,6 +169,7 @@ class McpQuantIntelGraph:
                 "fundamentals_report": state.get("fundamentals_report", ""),
                 "sentiment_report": state.get("sentiment_report", ""),
                 "technical_report": state.get("technical_report", ""),
+                "api_key": self.api_key,
             }
             
             # Look for ask_risk_agent tool

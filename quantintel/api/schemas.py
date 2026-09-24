@@ -15,6 +15,8 @@ class AnalysisRequest(BaseModel):
     trade_date: Optional[str] = Field(default=None, description="Analysis date in YYYY-MM-DD format. Defaults to today.")
     portfolio_context: Optional[PortfolioContext] = Field(default=None, description="User portfolio context")
     config_overrides: Optional[Dict[str, Any]] = Field(default=None, description="LLM settings overrides (e.g. llm_provider, models)")
+    openrouter_api_key: Optional[str] = Field(default=None, description="User-provided OpenRouter API key")
+    api_key: Optional[str] = Field(default=None, description="User-provided LLM API key")
 
 
 class AnalysisResponse(BaseModel):

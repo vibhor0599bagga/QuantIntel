@@ -33,15 +33,46 @@ def yf_retry(func, max_retries=3, base_delay=2.0):
                 raise
 
 
+def resolve_symbol(symbol: str) -> str:
+    """Normalize ticker symbols (e.g., auto-map Indian tickers without suffix)."""
+    s = symbol.strip().upper()
+    indian_map = {
+        "HDFCBANK": "HDFCBANK.NS",
+        "RELIANCE": "RELIANCE.NS",
+        "TCS": "TCS.NS",
+        "INFY": "INFY.NS",
+        "ICICIBANK": "ICICIBANK.NS",
+        "SBIN": "SBIN.NS",
+        "TATAMOTORS": "TATAMOTORS.NS",
+        "BHARTIARTL": "BHARTIARTL.NS",
+    }
+    return indian_map.get(s, s)
+
+
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     """Normalize a stock DataFrame for stockstats."""
+    if data is None or data.empty:
+        return pd.DataFrame(columns=["Date", "Open", "High", "Low", "Close", "Volume"])
+
+    if "Date" not in data.columns and isinstance(data.index, pd.DatetimeIndex):
+        data = data.reset_index()
+
+    if "Date" not in data.columns:
+        # Check first column if it looks like a date
+        if len(data.columns) > 0 and pd.api.types.is_datetime64_any_dtype(data.iloc[:, 0]):
+            data = data.rename(columns={data.columns[0]: "Date"})
+        else:
+            return pd.DataFrame(columns=["Date", "Open", "High", "Low", "Close", "Volume"])
+
     data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
     data = data.dropna(subset=["Date"])
 
     price_cols = [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in data.columns]
     data[price_cols] = data[price_cols].apply(pd.to_numeric, errors="coerce")
-    data = data.dropna(subset=["Close"])
-    data[price_cols] = data[price_cols].ffill().bfill()
+    if "Close" in data.columns:
+        data = data.dropna(subset=["Close"])
+    if price_cols:
+        data[price_cols] = data[price_cols].ffill().bfill()
 
     return data
 

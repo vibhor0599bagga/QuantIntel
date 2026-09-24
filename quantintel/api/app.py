@@ -98,6 +98,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -113,7 +114,7 @@ async def health_check():
 
 
 @app.post("/api/analyze", response_model=AnalysisResponse, tags=["Analysis"])
-async def analyze_stock(req: AnalysisRequest):
+async def analyze_stock(req: AnalysisRequest, request: Request):
     """
     Run full multi-agent quantitative analysis for a stock ticker.
     Returns complete JSON with reports from all 5 agents and the final recommendation.
@@ -129,10 +130,31 @@ async def analyze_stock(req: AnalysisRequest):
         "holdings": []
     }
 
+    # Extract user-provided API key if supplied
+    user_key = (
+        req.openrouter_api_key
+        or req.api_key
+        or (req.config_overrides.get("api_key") if req.config_overrides else None)
+        or (req.config_overrides.get("openrouter_api_key") if req.config_overrides else None)
+        or request.headers.get("x-openrouter-api-key")
+        or request.headers.get("x-api-key")
+    )
+
+    if not user_key and not os.environ.get("OPENROUTER_API_KEY") and not os.environ.get("OPENAI_API_KEY"):
+        raise HTTPException(
+            status_code=400,
+            detail="OpenRouter API Key is required. Please configure your key in the frontend header."
+        )
+
     # Merge configuration overrides if provided
     config = DEFAULT_CONFIG.copy()
     if req.config_overrides:
         config.update(req.config_overrides)
+    if user_key:
+        config["api_key"] = user_key.strip()
+        config["openrouter_api_key"] = user_key.strip()
+        if "llm_provider" not in (req.config_overrides or {}):
+            config["llm_provider"] = "openrouter"
 
     try:
         qi = McpQuantIntelGraph(app.state.mcp_session, app.state.mcp_tools, config=config, debug=False)
@@ -159,7 +181,7 @@ async def analyze_stock(req: AnalysisRequest):
 
 
 @app.post("/api/analyze/stream", tags=["Analysis"])
-async def stream_stock_analysis(req: AnalysisRequest):
+async def stream_stock_analysis(req: AnalysisRequest, request: Request):
     """
     Stream live multi-agent quantitative analysis progress using Server-Sent Events (SSE).
     Clients receive real-time updates as Phase 1 parallel agents complete, Phase 2 risk runs, and Phase 3 finishes.
@@ -175,9 +197,32 @@ async def stream_stock_analysis(req: AnalysisRequest):
         "holdings": []
     }
 
+    # Extract user-provided API key if supplied
+    user_key = (
+        req.openrouter_api_key
+        or req.api_key
+        or (req.config_overrides.get("api_key") if req.config_overrides else None)
+        or (req.config_overrides.get("openrouter_api_key") if req.config_overrides else None)
+        or request.headers.get("x-openrouter-api-key")
+        or request.headers.get("x-api-key")
+    )
+
+    if not user_key and not os.environ.get("OPENROUTER_API_KEY") and not os.environ.get("OPENAI_API_KEY"):
+        async def err_generator():
+            yield {
+                "event": "error",
+                "data": json.dumps({"error": "OpenRouter API Key required. Please set your key in the frontend terminal."})
+            }
+        return EventSourceResponse(err_generator())
+
     config = DEFAULT_CONFIG.copy()
     if req.config_overrides:
         config.update(req.config_overrides)
+    if user_key:
+        config["api_key"] = user_key.strip()
+        config["openrouter_api_key"] = user_key.strip()
+        if "llm_provider" not in (req.config_overrides or {}):
+            config["llm_provider"] = "openrouter"
 
     async def event_generator() -> AsyncGenerator[dict, None]:
         yield {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Play, Square, Sliders, Calendar, Shield, Compass, Sparkles } from "lucide-react";
+import { Play, Square, Sliders, Calendar, Shield, Compass, Sparkles, Key } from "lucide-react";
 import { CalendarPicker, getTodayDateString } from "@/components/CalendarPicker";
 
 export interface AnalysisConfig {
@@ -17,6 +17,8 @@ interface CommandBarProps {
   onStopAnalysis: () => void;
   isAnalyzing: boolean;
   defaultTradeDate?: string;
+  hasApiKey: boolean;
+  onOpenKeyModal: () => void;
 }
 
 const PRESET_TICKERS = ["AAPL", "MSFT", "GOOGL", "HDFCBANK", "NVDA", "TSLA", "RELIANCE"];
@@ -26,6 +28,8 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   onStopAnalysis,
   isAnalyzing,
   defaultTradeDate,
+  hasApiKey,
+  onOpenKeyModal,
 }) => {
   const [ticker, setTicker] = useState("AAPL");
   const [tradeDate, setTradeDate] = useState(
@@ -123,39 +127,50 @@ export const CommandBar: React.FC<CommandBarProps> = ({
         </div>
 
         {/* Quick Preset Ticker Buttons */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-[#121824]">
-          <span className="text-[11px] font-mono text-[#64748b] mr-1 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-[#ff9d00]" /> QUICK PRESETS:
-          </span>
-          {PRESET_TICKERS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => {
-                setTicker(t);
-                onRunAnalysis({
-                  ticker: t,
-                  tradeDate,
-                  riskTolerance,
-                  horizon,
-                  sectorExposure,
-                });
-              }}
-              disabled={isAnalyzing}
-              className={`px-2.5 py-1 text-xs font-mono rounded border transition-all ${
-                ticker === t
-                  ? "bg-[#ff9d00]/20 border-[#ff9d00] text-[#ff9d00] font-bold"
-                  : "bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:border-[#ff9d00]/40 hover:text-[#e2e8f0]"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-[#121824]">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-mono text-[#64748b] mr-1 flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#ff9d00]" /> QUICK PRESETS:
+            </span>
+            {PRESET_TICKERS.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => {
+                  setTicker(t);
+                  onRunAnalysis({
+                    ticker: t,
+                    tradeDate,
+                    riskTolerance,
+                    horizon,
+                    sectorExposure,
+                  });
+                }}
+                disabled={isAnalyzing}
+                className={`px-2.5 py-1 text-xs font-mono rounded border transition-all ${
+                  ticker === t
+                    ? "bg-[#ff9d00]/20 border-[#ff9d00] text-[#ff9d00] font-bold"
+                    : "bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:border-[#ff9d00]/40 hover:text-[#e2e8f0]"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={onOpenKeyModal}
+            className="text-[11px] font-mono flex items-center gap-1.5 text-[#ff9d00] hover:underline"
+          >
+            <Key className="w-3 h-3" />
+            {hasApiKey ? "Edit OpenRouter Key" : "Configure API Key"}
+          </button>
         </div>
 
         {/* Advanced Parameters Panel */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-3 border-t border-[#1a2333] bg-[#080c14] p-3 rounded border border-[#1e293b]">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-3 border-t border-[#1a2333] bg-[#080c14] p-3 rounded border border-[#1e293b]">
             <div>
               <label className="text-[11px] text-[#64748b] font-mono flex items-center gap-1 mb-1.5">
                 <Calendar className="w-3 h-3 text-[#00e5ff]" /> ANALYSIS DATE (CALENDAR)
@@ -197,6 +212,24 @@ export const CommandBar: React.FC<CommandBarProps> = ({
                 <option value="medium_term">MEDIUM TERM (1-6 Months)</option>
                 <option value="long_term">LONG TERM (1+ Years)</option>
               </select>
+            </div>
+
+            <div>
+              <label className="text-[11px] text-[#64748b] font-mono flex items-center gap-1 mb-1.5">
+                <Key className="w-3 h-3 text-[#ff9d00]" /> OPENROUTER KEY
+              </label>
+              <button
+                type="button"
+                onClick={onOpenKeyModal}
+                className="w-full text-left bg-[#0d121d] border border-[#1e293b] hover:border-[#ff9d00]/60 text-[#e2e8f0] font-mono text-xs px-2.5 py-2 rounded flex items-center justify-between"
+              >
+                <span className={hasApiKey ? "text-[#00ff66]" : "text-[#ff9d00]"}>
+                  {hasApiKey ? "••••••••••••••••" : "Set API Key"}
+                </span>
+                <span className="text-[10px] bg-[#1e293b] px-1.5 py-0.5 rounded text-[#94a3b8]">
+                  Edit
+                </span>
+              </button>
             </div>
           </div>
         )}

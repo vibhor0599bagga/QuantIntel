@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 import yfinance as yf
 import os
 
-from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry
+from .stockstats_utils import StockstatsUtils, _clean_dataframe, yf_retry, resolve_symbol
 
 
 # ─── OHLCV ────────────────────────────────────────────────────────────────────
@@ -22,10 +22,11 @@ def get_YFin_data_online(
     datetime.strptime(start_date, "%Y-%m-%d")
     datetime.strptime(end_date, "%Y-%m-%d")
 
-    ticker = yf.Ticker(symbol.upper())
+    clean_symbol = resolve_symbol(symbol)
+    ticker = yf.Ticker(clean_symbol)
     data   = yf_retry(lambda: ticker.history(start=start_date, end=end_date))
 
-    if data.empty:
+    if data is None or data.empty:
         return f"No data found for symbol '{symbol}' between {start_date} and {end_date}"
 
     if data.index.tz is not None:
@@ -35,7 +36,7 @@ def get_YFin_data_online(
         if col in data.columns:
             data[col] = data[col].round(2)
 
-    header  = f"# Stock data for {symbol.upper()} from {start_date} to {end_date}\n"
+    header  = f"# Stock data for {clean_symbol} from {start_date} to {end_date}\n"
     header += f"# Total records: {len(data)}\n"
     header += f"# Data retrieved on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
     return header + data.to_csv()
@@ -109,6 +110,7 @@ def _get_stock_stats_bulk(symbol, indicator, curr_date) -> dict:
     import pandas as pd
     from stockstats import wrap
 
+    clean_symbol = resolve_symbol(symbol)
     config = get_config()
     today_date   = pd.Timestamp.today()
     start_date   = today_date - pd.DateOffset(years=15)
@@ -118,28 +120,33 @@ def _get_stock_stats_bulk(symbol, indicator, curr_date) -> dict:
     os.makedirs(config["data_cache_dir"], exist_ok=True)
     data_file = os.path.join(
         config["data_cache_dir"],
-        f"{symbol}-YFin-data-{start_str}-{end_str}.csv",
+        f"{clean_symbol}-YFin-data-{start_str}-{end_str}.csv",
     )
 
     if os.path.exists(data_file):
         data = pd.read_csv(data_file, on_bad_lines="skip")
     else:
         data = yf_retry(lambda: yf.download(
-            symbol, start=start_str, end=end_str,
+            clean_symbol, start=start_str, end=end_str,
             multi_level_index=False, progress=False, auto_adjust=True,
         ))
-        data = data.reset_index()
-        data.to_csv(data_file, index=False)
+        if data is not None and not data.empty:
+            data = data.reset_index()
+            data.to_csv(data_file, index=False)
 
     data = _clean_dataframe(data)
-    df   = wrap(data)
+    if data.empty or "Date" not in data.columns:
+        return {}
+
+    df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
-    df[indicator]  # trigger calculation
+    if indicator in df:
+        df[indicator]  # trigger calculation
 
     result = {}
     for _, row in df.iterrows():
         import pandas as _pd
-        val = row[indicator]
+        val = row.get(indicator, "N/A")
         result[row["Date"]] = "N/A" if _pd.isna(val) else str(val)
     return result
 
@@ -147,8 +154,9 @@ def _get_stock_stats_bulk(symbol, indicator, curr_date) -> dict:
 # ─── FUNDAMENTALS ─────────────────────────────────────────────────────────────
 
 def get_fundamentals(ticker, curr_date=None):
+    clean_ticker = resolve_symbol(ticker)
     try:
-        t    = yf.Ticker(ticker.upper())
+        t    = yf.Ticker(clean_ticker)
         info = yf_retry(lambda: t.info)
         if not info:
             return f"No fundamentals data for '{ticker}'"
@@ -182,7 +190,7 @@ def get_fundamentals(ticker, curr_date=None):
         ]
 
         lines  = [f"{label}: {val}" for label, val in fields if val is not None]
-        header = f"# Fundamentals for {ticker.upper()}\n"
+        header = f"# Fundamentals for {clean_ticker}\n"
         header += f"# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         return header + "\n".join(lines)
 
@@ -191,48 +199,52 @@ def get_fundamentals(ticker, curr_date=None):
 
 
 def get_balance_sheet(ticker, freq="quarterly", curr_date=None):
+    clean_ticker = resolve_symbol(ticker)
     try:
-        t = yf.Ticker(ticker.upper())
+        t = yf.Ticker(clean_ticker)
         data = yf_retry(lambda: t.quarterly_balance_sheet if freq.lower() == "quarterly" else t.balance_sheet)
-        if data.empty:
+        if data is None or data.empty:
             return f"No balance sheet data for '{ticker}'"
-        header = f"# Balance Sheet for {ticker.upper()} ({freq})\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header = f"# Balance Sheet for {clean_ticker} ({freq})\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         return header + data.to_csv()
     except Exception as e:
         return f"Error retrieving balance sheet for {ticker}: {e}"
 
 
 def get_cashflow(ticker, freq="quarterly", curr_date=None):
+    clean_ticker = resolve_symbol(ticker)
     try:
-        t = yf.Ticker(ticker.upper())
+        t = yf.Ticker(clean_ticker)
         data = yf_retry(lambda: t.quarterly_cashflow if freq.lower() == "quarterly" else t.cashflow)
-        if data.empty:
+        if data is None or data.empty:
             return f"No cash flow data for '{ticker}'"
-        header = f"# Cash Flow for {ticker.upper()} ({freq})\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header = f"# Cash Flow for {clean_ticker} ({freq})\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         return header + data.to_csv()
     except Exception as e:
         return f"Error retrieving cash flow for {ticker}: {e}"
 
 
 def get_income_statement(ticker, freq="quarterly", curr_date=None):
+    clean_ticker = resolve_symbol(ticker)
     try:
-        t = yf.Ticker(ticker.upper())
+        t = yf.Ticker(clean_ticker)
         data = yf_retry(lambda: t.quarterly_income_stmt if freq.lower() == "quarterly" else t.income_stmt)
-        if data.empty:
+        if data is None or data.empty:
             return f"No income statement data for '{ticker}'"
-        header = f"# Income Statement for {ticker.upper()} ({freq})\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header = f"# Income Statement for {clean_ticker} ({freq})\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         return header + data.to_csv()
     except Exception as e:
         return f"Error retrieving income statement for {ticker}: {e}"
 
 
 def get_insider_transactions(ticker):
+    clean_ticker = resolve_symbol(ticker)
     try:
-        t    = yf.Ticker(ticker.upper())
+        t    = yf.Ticker(clean_ticker)
         data = yf_retry(lambda: t.insider_transactions)
         if data is None or data.empty:
             return f"No insider transactions for '{ticker}'"
-        header = f"# Insider Transactions for {ticker.upper()}\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        header = f"# Insider Transactions for {clean_ticker}\n# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         return header + data.to_csv()
     except Exception as e:
         return f"Error retrieving insider transactions for {ticker}: {e}"

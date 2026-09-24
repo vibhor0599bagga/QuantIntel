@@ -7,9 +7,18 @@ import { StreamProgress, StreamState } from "@/components/StreamProgress";
 import { VerdictHero } from "@/components/VerdictHero";
 import { AgentGrid } from "@/components/AgentGrid";
 import { RawTerminal } from "@/components/RawTerminal";
+import { ApiKeyModal } from "@/components/ApiKeyModal";
 import { getTodayDateString } from "@/components/CalendarPicker";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://quantintel.onrender.com";
+const getApiBaseUrl = (): string => {
+  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return "http://localhost:8000";
+    }
+  }
+  return "https://quantintel.onrender.com";
+};
 
 // Helper to extract clean Markdown text from tool results or JSON structures
 const cleanReport = (val: any): string => {
@@ -48,8 +57,32 @@ const cleanReport = (val: any): string => {
 
 export default function Home() {
   const [apiStatus, setApiStatus] = useState<"connected" | "connecting" | "offline">("connecting");
+  const [apiUrl, setApiUrl] = useState("http://localhost:8000");
   const [ticker, setTicker] = useState("AAPL");
   const [tradeDate, setTradeDate] = useState(() => getTodayDateString());
+
+  // User OpenRouter API Key state
+  const [apiKey, setApiKey] = useState("");
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+
+  // Load API Key from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("quantintel_openrouter_key");
+    if (saved) {
+      setApiKey(saved);
+    }
+    const resolvedUrl = getApiBaseUrl();
+    setApiUrl(resolvedUrl);
+  }, []);
+
+  const handleSaveApiKey = (newKey: string) => {
+    setApiKey(newKey);
+    if (newKey) {
+      localStorage.setItem("quantintel_openrouter_key", newKey);
+    } else {
+      localStorage.removeItem("quantintel_openrouter_key");
+    }
+  };
 
   // Stream State
   const [streamState, setStreamState] = useState<StreamState>({
@@ -75,8 +108,9 @@ export default function Home() {
   // Health check on mount
   useEffect(() => {
     const checkHealth = async () => {
+      const targetUrl = getApiBaseUrl();
       try {
-        const res = await fetch(`${API_BASE_URL}/health`);
+        const res = await fetch(`${targetUrl}/health`);
         if (res.ok) {
           const data = await res.json();
           console.log("🌐 [QuantIntel API] Live Health Status:", data);
@@ -123,6 +157,16 @@ export default function Home() {
   };
 
   const handleRunAnalysis = async (config: AnalysisConfig) => {
+    // If no key is set, prompt user to set it
+    if (!apiKey.trim()) {
+      setIsKeyModalOpen(true);
+      setStreamState((prev) => ({
+        ...prev,
+        logs: [...prev.logs, "[AUTH] Please set your OpenRouter API key to initiate the analysis."],
+      }));
+      return;
+    }
+
     setTicker(config.ticker);
     setTradeDate(config.tradeDate);
 
@@ -140,7 +184,7 @@ export default function Home() {
       phase1Complete: false,
       phase2Complete: false,
       phase3Complete: false,
-      logs: [`[INIT] Target Ticker: ${config.ticker} | Date: ${config.tradeDate}`],
+      logs: [`[INIT] Target Ticker: ${config.ticker} | Date: ${config.tradeDate} | Using User OpenRouter Key`],
     });
 
     if (abortControllerRef.current) {
@@ -149,13 +193,18 @@ export default function Home() {
     abortControllerRef.current = new AbortController();
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/analyze/stream`, {
+      const targetUrl = apiUrl || getApiBaseUrl();
+      const response = await fetch(`${targetUrl}/api/analyze/stream`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-openrouter-api-key": apiKey.trim(),
+        },
         signal: abortControllerRef.current.signal,
         body: JSON.stringify({
           ticker: config.ticker,
           trade_date: config.tradeDate,
+          openrouter_api_key: apiKey.trim(),
           portfolio_context: {
             sector_exposure: config.sectorExposure,
             horizon: config.horizon,
@@ -269,11 +318,16 @@ export default function Home() {
     } catch (err: any) {
       if (err.name === "AbortError") return;
       console.error("Stream execution error:", err);
+      const isNetworkError = err.message?.includes("failed") || err.message?.includes("NetworkError") || err.name === "TypeError";
+      const detailMsg = isNetworkError
+        ? `Failed to connect to backend at ${apiUrl || getApiBaseUrl()}. Please make sure the FastAPI server is running (uvicorn quantintel.api.app:app --port 8000).`
+        : err.message;
+
       setStreamState((prev) => ({
         ...prev,
         isAnalyzing: false,
-        error: err.message,
-        logs: [...prev.logs, `[ERROR] Stream failed: ${err.message}`],
+        error: detailMsg,
+        logs: [...prev.logs, `[ERROR] ${detailMsg}`],
       }));
     }
   };
@@ -281,7 +335,12 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#06090e] text-[#e2e8f0] flex flex-col font-mono">
       {/* Header Bar */}
-      <Header apiStatus={apiStatus} apiUrl={API_BASE_URL} />
+      <Header
+        apiStatus={apiStatus}
+        apiUrl={apiUrl}
+        hasApiKey={!!apiKey.trim()}
+        onOpenKeyModal={() => setIsKeyModalOpen(true)}
+      />
 
       {/* Main Content Area */}
       <main className="max-w-[1700px] w-full mx-auto px-4 py-6 flex-1">
@@ -291,6 +350,8 @@ export default function Home() {
           onStopAnalysis={handleStopAnalysis}
           isAnalyzing={streamState.isAnalyzing}
           defaultTradeDate={tradeDate}
+          hasApiKey={!!apiKey.trim()}
+          onOpenKeyModal={() => setIsKeyModalOpen(true)}
         />
 
         {/* Live Swarm Execution Progress Tracker */}
@@ -315,6 +376,14 @@ export default function Home() {
         {/* Collapsible Developer Stream Terminal */}
         <RawTerminal logs={streamState.logs} />
       </main>
+
+      {/* API Key Modal */}
+      <ApiKeyModal
+        isOpen={isKeyModalOpen}
+        onClose={() => setIsKeyModalOpen(false)}
+        apiKey={apiKey}
+        onSaveKey={handleSaveApiKey}
+      />
 
       {/* Footer */}
       <footer className="w-full bg-[#040609] border-t border-[#121824] py-3 text-center text-xs text-[#64748b]">

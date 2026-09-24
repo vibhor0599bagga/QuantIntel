@@ -1,11 +1,13 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Activity, Radio, ShieldCheck, Terminal as TerminalIcon } from "lucide-react";
+import { Activity, Radio, Key, Terminal as TerminalIcon } from "lucide-react";
 
 interface HeaderProps {
   apiStatus: "connected" | "connecting" | "offline";
   apiUrl: string;
+  hasApiKey: boolean;
+  onOpenKeyModal: () => void;
 }
 
 const TICKER_DATA = [
@@ -21,7 +23,7 @@ const TICKER_DATA = [
   { symbol: "GOLD", price: "2,504.20", change: "+12.80", pct: "+0.51%", up: true },
 ];
 
-export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl }) => {
+export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, onOpenKeyModal }) => {
   const [timeStr, setTimeStr] = useState<string>("");
 
   useEffect(() => {
@@ -48,11 +50,27 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl }) => {
           </span>
         </div>
 
-        {/* Server Connection Indicator */}
-        <div className="flex items-center gap-4 text-xs font-mono">
+        {/* Action / Server Connection Indicator */}
+        <div className="flex items-center gap-3 text-xs font-mono">
+          {/* User OpenRouter Key Trigger */}
+          <button
+            onClick={onOpenKeyModal}
+            className={`flex items-center gap-2 px-3 py-1 rounded border transition-all cursor-pointer ${
+              hasApiKey
+                ? "bg-[#00ff66]/10 border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20"
+                : "bg-[#ff9d00]/15 border-[#ff9d00]/50 text-[#ff9d00] hover:bg-[#ff9d00]/25 animate-pulse"
+            }`}
+            title="Configure OpenRouter API Key"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="font-bold">
+              {hasApiKey ? "KEY: CONFIGURED" : "🔑 SET OPENROUTER KEY"}
+            </span>
+          </button>
+
           <div className="flex items-center gap-2 px-2.5 py-1 rounded bg-[#0f172a] border border-[#1e293b]">
             <Radio className={`w-3.5 h-3.5 ${apiStatus === "connected" ? "text-[#00ff66] animate-pulse" : apiStatus === "connecting" ? "text-[#ffd700] animate-spin" : "text-[#ff3333]"}`} />
-            <span className="text-[#94a3b8]">RENDER API:</span>
+            <span className="text-[#94a3b8]">API:</span>
             <span className={apiStatus === "connected" ? "text-[#00ff66] font-bold" : apiStatus === "connecting" ? "text-[#ffd700]" : "text-[#ff3333]"}>
               {apiStatus.toUpperCase()}
             </span>

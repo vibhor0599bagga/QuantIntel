@@ -66,57 +66,82 @@ def _create_runner(agent_key, agent_node, tool_node) -> callable:
         return result.get(f"{agent_key}_report", "No report generated.")
     return runner
 
-# Initialize Global config and LLM
+# Initialize Global config
 set_config(DEFAULT_CONFIG)
-llm = create_llm_client(
-    provider=DEFAULT_CONFIG["llm_provider"],
-    model=DEFAULT_CONFIG["quick_think_llm"],
-    base_url=DEFAULT_CONFIG.get("backend_url"),
-).get_llm()
 
-fundamentals_runner = _create_runner("fundamentals", create_fundamentals_agent(llm), get_fundamentals_tool_node())
-sentiment_runner    = _create_runner("sentiment",    create_sentiment_agent(llm),    get_sentiment_tool_node())
-technical_runner    = _create_runner("technical",    create_technical_agent(llm),    get_technical_tool_node())
-risk_runner         = _create_runner("risk",         create_risk_agent(llm),         get_risk_tool_node())
-macro_runner        = _create_runner("macro",        create_macro_agent(llm),        get_macro_tool_node())
+_runners_cache = {}
+
+def _get_runner(agent_key: str, api_key: str = ""):
+    clean_key = api_key.strip() if api_key else ""
+    cache_key = (agent_key, clean_key)
+    if cache_key in _runners_cache:
+        return _runners_cache[cache_key]
+
+    agent_llm = create_llm_client(
+        provider=DEFAULT_CONFIG["llm_provider"],
+        model=DEFAULT_CONFIG["quick_think_llm"],
+        base_url=DEFAULT_CONFIG.get("backend_url"),
+        api_key=clean_key if clean_key else None,
+    ).get_llm()
+
+    if agent_key == "fundamentals":
+        runner = _create_runner("fundamentals", create_fundamentals_agent(agent_llm), get_fundamentals_tool_node())
+    elif agent_key == "sentiment":
+        runner = _create_runner("sentiment", create_sentiment_agent(agent_llm), get_sentiment_tool_node())
+    elif agent_key == "technical":
+        runner = _create_runner("technical", create_technical_agent(agent_llm), get_technical_tool_node())
+    elif agent_key == "risk":
+        runner = _create_runner("risk", create_risk_agent(agent_llm), get_risk_tool_node())
+    elif agent_key == "macro":
+        runner = _create_runner("macro", create_macro_agent(agent_llm), get_macro_tool_node())
+    else:
+        raise ValueError(f"Unknown agent key: {agent_key}")
+
+    _runners_cache[cache_key] = runner
+    return runner
 
 mcp = FastMCP("QuantIntel Swarm Agents")
 
 @mcp.tool()
-async def ask_fundamentals_agent(ticker: str, trade_date: str) -> str:
+async def ask_fundamentals_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
     """Call this agent to perform a deep-dive fundamental analysis of a company. 
     It evaluates core financial metrics including P/E ratios, profit margins, debt-to-equity ratios, and free cash flow. 
     Returns a comprehensive valuation report indicating whether the stock is overvalued, undervalued, or fairly priced, along with a firm BUY/HOLD/SELL fundamental signal."""
-    return await fundamentals_runner(ticker, trade_date)
+    runner = _get_runner("fundamentals", api_key)
+    return await runner(ticker, trade_date)
 
 @mcp.tool()
-async def ask_sentiment_agent(ticker: str, trade_date: str) -> str:
+async def ask_sentiment_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
     """Call this agent to analyze recent news, market narratives, and media sentiment surrounding the stock. 
     It processes recent headlines and articles to gauge public and institutional perception. 
     Returns a detailed sentiment report summarizing key news catalysts, the overarching narrative, and a bullish/bearish/neutral sentiment score."""
-    return await sentiment_runner(ticker, trade_date)
+    runner = _get_runner("sentiment", api_key)
+    return await runner(ticker, trade_date)
 
 @mcp.tool()
-async def ask_technical_agent(ticker: str, trade_date: str) -> str:
+async def ask_technical_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
     """Call this agent to perform technical price-action and momentum analysis on the stock. 
     It evaluates price data, moving averages, relative strength, and momentum oscillators. 
     Returns a technical analysis report detailing current trend direction, key support/resistance levels, and short-to-medium term trading signals."""
-    return await technical_runner(ticker, trade_date)
+    runner = _get_runner("technical", api_key)
+    return await runner(ticker, trade_date)
 
 @mcp.tool()
-async def ask_risk_agent(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "") -> str:
+async def ask_risk_agent(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "", api_key: str = "") -> str:
     """Call this agent to quantify the downside risk and volatility profile of the stock. 
     It calculates key risk metrics such as Average True Range (ATR), beta, Value at Risk (VaR), and historical drawdowns.
     IMPORTANT: Provide the fundamentals, sentiment, and technical reports generated by the other agents so the Risk agent can synthesize them.
     Returns a comprehensive risk report outputting the quantified risk level (low/moderate/high) and an assessment of potential downside exposure."""
-    return await risk_runner(ticker, trade_date, fundamentals_report, sentiment_report, technical_report)
+    runner = _get_runner("risk", api_key)
+    return await runner(ticker, trade_date, fundamentals_report, sentiment_report, technical_report)
 
 @mcp.tool()
-async def ask_macro_agent(ticker: str, trade_date: str) -> str:
+async def ask_macro_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
     """Call this agent to analyze the broader macroeconomic environment and monetary policy context. 
     It evaluates Federal Reserve regimes, interest rate directions, inflation dynamics, and broader market conditions. 
     Returns a macro regime report (e.g., Risk-On vs. Risk-Off), assessing how current economic headwinds or tailwinds impact the market and the specific stock."""
-    return await macro_runner(ticker, trade_date)
+    runner = _get_runner("macro", api_key)
+    return await runner(ticker, trade_date)
 
 # Expose a resource over MCP
 @mcp.resource("portfolio://user/current")
