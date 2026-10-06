@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { Award, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, MinusCircle, Download, Share2 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Award, TrendingUp, TrendingDown, MinusCircle, Download, Copy, Check, Sparkles, ShieldCheck } from "lucide-react";
 import confetti from "canvas-confetti";
 
 interface VerdictHeroProps {
@@ -15,7 +15,7 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   tradeDate,
   recommendationText,
 }) => {
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
 
   // Parsing logic for stance & conviction
   const upperText = (recommendationText || "").toUpperCase();
@@ -30,15 +30,14 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   const convictionMatch = upperText.match(/CONVICTION\s*(?:LEVEL)?:\s*([0-9\.]+)/i);
   const conviction = convictionMatch ? convictionMatch[1] : null;
 
-  // Trigger confetti on BUY unconditionally at the top level
   useEffect(() => {
     if (recommendationText && stance === "BUY") {
       try {
         confetti({
-          particleCount: 80,
-          spread: 70,
+          particleCount: 60,
+          spread: 60,
           origin: { y: 0.6 },
-          colors: ["#00ff66", "#00e5ff", "#ff9d00"],
+          colors: ["#10B981", "#06B6D4", "#F59E0B"],
         });
       } catch (err) {
         console.warn("Confetti error:", err);
@@ -56,9 +55,10 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
 
   const handleDownload = () => {
     const element = document.createElement("a");
-    const file = new Blob([`QUANTINTEL SUPERVISOR REPORT FOR ${ticker} (${tradeDate})\n\n` + recommendationText], {
-      type: "text/plain",
-    });
+    const file = new Blob(
+      [`QUANTINTEL SUPERVISOR REPORT FOR ${ticker} (${tradeDate})\n\n` + recommendationText],
+      { type: "text/plain" }
+    );
     element.href = URL.createObjectURL(file);
     element.download = `QUANTINTEL_${ticker}_REPORT_${tradeDate}.txt`;
     document.body.appendChild(element);
@@ -67,85 +67,98 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
   };
 
   return (
-    <div className="w-full bt-panel p-6 sm:p-8 mb-8 relative overflow-hidden border-2 border-[#ff9d00]/50 shadow-[0_0_36px_rgba(255,157,0,0.18)]">
-      {/* Background Accent Glow */}
+    <div className="w-full glass-panel p-6 sm:p-7 mb-6 relative overflow-hidden border-white/[0.1] shadow-2xl animate-in fade-in duration-300">
+      {/* Background Subtle Radial Glow */}
       <div
-        className={`absolute -right-24 -top-24 w-80 h-80 rounded-full blur-3xl opacity-20 pointer-events-none ${
-          stance === "BUY" ? "bg-[#00ff66]" : stance === "SELL" ? "bg-[#ff3333]" : "bg-[#ffd700]"
+        className={`absolute -right-16 -top-16 w-72 h-72 rounded-full blur-3xl opacity-15 pointer-events-none ${
+          stance === "BUY"
+            ? "bg-emerald-500"
+            : stance === "SELL"
+            ? "bg-rose-500"
+            : "bg-amber-500"
         }`}
       />
 
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-5 border-b border-[#1a2333] pb-6 mb-6">
-        <div className="flex items-center gap-4">
-          <div className="p-3.5 bg-[#ff9d00]/15 border border-[#ff9d00]/50 rounded-lg text-[#ff9d00] shadow-[0_0_15px_rgba(255,157,0,0.2)]">
-            <Award className="w-7 h-7" />
+      {/* Top Header Row */}
+      <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-white/[0.08]">
+        {/* Left: Ticker & Title */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md shadow-amber-500/10">
+            <Award className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-mono text-[#8492a6] tracking-widest uppercase font-bold mb-1">
-              SUPERVISOR DECISION SYNTHESIS
+            <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-400" /> Executive Verdict Synthesis
             </div>
-            <h2 className="text-xl sm:text-2xl font-mono font-black text-[#e2e8f0] tracking-wide">
-              TARGET TICKER: <span className="text-[#00e5ff]">{ticker}</span>
+            <h2 className="text-xl sm:text-2xl font-bold text-white font-sans flex items-center gap-2">
+              <span>{ticker}</span>
+              <span className="text-xs font-mono font-medium px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-400">
+                {tradeDate}
+              </span>
             </h2>
           </div>
         </div>
 
-        {/* Stance Badge & Actions */}
-        <div className="flex flex-wrap items-center gap-3.5">
+        {/* Right: Recommendation Badge & Actions */}
+        <div className="flex flex-wrap items-center gap-3">
           {conviction && (
-            <div className="px-3.5 py-2 rounded-lg bg-[#0d121d] border border-[#1e293b] text-xs font-mono font-bold text-[#8492a6]">
-              CONVICTION: <span className="text-[#00e5ff] font-extrabold">{conviction}</span>
+            <div className="px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs font-mono font-medium text-slate-300">
+              Conviction: <strong className="text-cyan-400">{conviction}</strong>
             </div>
           )}
 
           <div
-            className={`px-6 py-2.5 rounded-lg text-sm sm:text-base font-mono font-black flex items-center gap-2.5 tracking-wider shadow-lg ${
+            className={`px-5 py-2 rounded-full text-xs sm:text-sm font-bold flex items-center justify-center gap-2.5 tracking-wide shadow-lg ${
               stance === "BUY"
-                ? "bt-badge-buy"
+                ? "bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 shadow-emerald-500/10"
                 : stance === "SELL"
-                ? "bt-badge-sell"
-                : "bt-badge-hold"
+                ? "bg-rose-500/15 border border-rose-500/40 text-rose-300 shadow-rose-500/10"
+                : "bg-amber-500/15 border border-amber-500/40 text-amber-300 shadow-amber-500/10"
             }`}
           >
             {stance === "BUY" ? (
-              <TrendingUp className="w-5 h-5" />
+              <TrendingUp className="w-4 h-4" />
             ) : stance === "SELL" ? (
-              <TrendingDown className="w-5 h-5" />
+              <TrendingDown className="w-4 h-4" />
             ) : (
-              <MinusCircle className="w-5 h-5" />
+              <MinusCircle className="w-4 h-4" />
             )}
-            <span>RECOMMENDATION: {stance}</span>
+            <span>VERDICT: {stance}</span>
           </div>
 
-          <button
-            onClick={handleCopy}
-            className="h-10 px-3.5 bg-[#0f172a] border border-[#1e293b] hover:border-[#ff9d00] text-[#94a3b8] hover:text-[#ff9d00] rounded-lg font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
-            title="Copy Report"
-          >
-            {copied ? "COPIED!" : "COPY"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopy}
+              className="h-9 px-4.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-full text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer"
+              title="Copy markdown report"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              <span>{copied ? "Copied" : "Copy"}</span>
+            </button>
 
-          <button
-            onClick={handleDownload}
-            className="h-10 px-4 bg-[#0f172a] border border-[#1e293b] hover:border-[#ff9d00] text-[#94a3b8] hover:text-[#ff9d00] rounded-lg font-mono text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
-            title="Download Full Report"
-          >
-            <Download className="w-4 h-4" />
-            <span>EXPORT</span>
-          </button>
+            <button
+              onClick={handleDownload}
+              className="h-9 px-4.5 bg-slate-900/90 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white rounded-full text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer"
+              title="Download text report"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Rationale Body */}
-      <div className="font-mono text-xs sm:text-sm leading-relaxed text-[#cbd5e1] whitespace-pre-line bg-[#070b12] p-6 rounded-lg border border-[#1a2333] max-h-[500px] overflow-y-auto space-y-3 selection:bg-[#ff9d00]/30 selection:text-white">
+      {/* Rationale Content Body with Clean Readable Typography */}
+      <div className="mt-5 p-5 rounded-xl bg-slate-950/70 border border-white/[0.06] text-slate-300 text-xs sm:text-sm leading-relaxed font-sans max-h-[460px] overflow-y-auto whitespace-pre-line selection:bg-amber-500/20 selection:text-white">
         {recommendationText}
       </div>
 
-      {/* Signal Weights Legend */}
-      <div className="mt-5 pt-4 border-t border-[#1a2333] flex flex-wrap items-center justify-between gap-2 text-xs font-mono text-[#8492a6]">
-        <span className="font-semibold">WEIGHTING: Fundamentals (40%) | Risk (30%) | Macro (20%) | Tech+Sent (10%)</span>
-        <span className="text-[#00e5ff] font-bold">DATE: {tradeDate}</span>
+      {/* Footer Weights Bar */}
+      <div className="mt-4 pt-3 border-t border-white/[0.06] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-500">
+        <span>Allocation Weights: Fundamentals (40%) • Risk (30%) • Macro (20%) • Tech+Sentiment (10%)</span>
+        <span className="flex items-center gap-1 text-slate-400">
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Risk-Balanced Synthesis
+        </span>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Play, Square, Sliders, Calendar, Shield, Compass, Sparkles, Key } from "lucide-react";
+import { Play, Square, Sliders, Sparkles, ChevronDown, ChevronUp, Layers, Target, Shield, Search } from "lucide-react";
 import { CalendarPicker, getTodayDateString } from "@/components/CalendarPicker";
 
 export interface AnalysisConfig {
@@ -21,7 +21,15 @@ interface CommandBarProps {
   onOpenKeyModal: () => void;
 }
 
-const PRESET_TICKERS = ["AAPL", "MSFT", "GOOGL", "HDFCBANK", "NVDA", "TSLA", "RELIANCE"];
+const PRESET_TICKERS = [
+  { symbol: "NVDA", name: "Nvidia" },
+  { symbol: "AAPL", name: "Apple" },
+  { symbol: "MSFT", name: "Microsoft" },
+  { symbol: "GOOGL", name: "Alphabet" },
+  { symbol: "TSLA", name: "Tesla" },
+  { symbol: "HDFCBANK", name: "HDFC Bank" },
+  { symbol: "RELIANCE", name: "Reliance" },
+];
 
 export const CommandBar: React.FC<CommandBarProps> = ({
   onRunAnalysis,
@@ -60,28 +68,31 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   };
 
   return (
-    <div className="w-full bt-panel p-6 mb-8 shadow-xl">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {/* Bloomberg Command Input Line */}
-        <div className="flex flex-wrap lg:flex-nowrap items-center gap-4">
-          {/* Main Input Box */}
-          <div className="flex-1 min-w-[280px] h-13 flex items-center bg-[#05080f] border border-[#ff9d00]/50 rounded-lg px-4 focus-within:border-[#ff9d00] focus-within:shadow-[0_0_16px_rgba(255,157,0,0.35)] transition-all">
-            <span className="text-[#ff9d00] font-extrabold text-sm sm:text-base mr-3 select-none tracking-wide shrink-0">
-              QUANTINTEL&gt;
-            </span>
+    <div className="w-full glass-panel p-4 sm:p-5 mb-8">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+        {/* Main Search & Controls Row (Unified h-11 / 44px Controls) */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 sm:gap-3">
+          {/* Ticker Search Box (Clean prefix & hero ticker typography) */}
+          <div className="flex-1 min-w-[220px] h-11 flex items-center bg-[#090D16] border border-slate-800/90 rounded-full px-4 sm:px-5 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
+            <div className="flex items-center shrink-0 select-none mr-3">
+              <Search className="w-3.5 h-3.5 text-slate-500 mr-2 shrink-0" />
+              <span className="text-[10px] font-mono font-semibold tracking-wider text-slate-400 uppercase">
+                TICKER
+              </span>
+              <span className="w-px h-3.5 bg-slate-800/90 ml-3" />
+            </div>
             <input
               type="text"
               value={ticker}
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="ENTER TICKER (e.g. AAPL, MSFT, GOOGL, HDFCBANK, NVDA)"
+              placeholder="e.g. AAPL, NVDA, HDFCBANK"
               disabled={isAnalyzing}
-              className="w-full bg-transparent text-[#e2e8f0] font-mono font-bold text-sm sm:text-base focus:outline-none uppercase placeholder:text-[#475569] placeholder:font-normal"
+              className="w-full bg-transparent text-white font-mono font-bold text-sm tracking-wide focus:outline-none uppercase placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal placeholder:text-xs"
             />
-            <span className="bt-cursor"></span>
           </div>
 
-          {/* Quick Date Selector in Command Line */}
-          <div className="w-full sm:w-56 shrink-0">
+          {/* Quick Date Selector (Compact, unified height and styling) */}
+          <div className="w-full sm:w-[210px] shrink-0">
             <CalendarPicker
               selectedDate={tradeDate}
               onSelectDate={setTradeDate}
@@ -89,150 +100,172 @@ export const CommandBar: React.FC<CommandBarProps> = ({
             />
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
+          {/* Action Buttons Group */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Strategy Context Toggle */}
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className={`h-13 px-4 rounded-lg border text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              className={`h-11 px-4.5 sm:px-5 rounded-full border text-xs font-medium flex items-center justify-between gap-2.5 transition-all duration-150 cursor-pointer shrink-0 whitespace-nowrap ${
                 showAdvanced
-                  ? "bg-[#ff9d00]/20 border-[#ff9d00] text-[#ff9d00] shadow-[0_0_10px_rgba(255,157,0,0.2)]"
-                  : "bg-[#0d121d] border-[#1e293b] text-[#94a3b8] hover:border-[#ff9d00]/50 hover:text-[#e2e8f0]"
+                  ? "bg-slate-800/90 border-slate-700 text-white ring-1 ring-white/10"
+                  : "bg-[#090D16] border-slate-800/90 text-slate-300 hover:border-slate-700 hover:text-white"
               }`}
+              title="Portfolio context & risk parameters"
             >
-              <Sliders className="w-4 h-4" />
-              <span>SETTINGS</span>
+              <div className="flex items-center gap-2">
+                <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="text-xs">Strategy Context</span>
+              </div>
+              {showAdvanced ? (
+                <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-1" />
+              )}
             </button>
 
+            {/* Execute / Abort Button */}
             {isAnalyzing ? (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onStopAnalysis();
-                }}
-                className="h-13 px-6 bg-[#ff3333]/20 border border-[#ff3333] text-[#ff3333] hover:bg-[#ff3333]/30 rounded-lg font-mono font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-[0_0_12px_rgba(255,51,51,0.25)] cursor-pointer"
+                onClick={onStopAnalysis}
+                className="h-11 px-6 rounded-full bg-rose-500/20 border border-rose-500/50 hover:bg-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm shadow-rose-500/10 shrink-0 whitespace-nowrap"
               >
-                <Square className="w-4 h-4 fill-current" />
-                <span>ABORT ANALYSIS</span>
+                <Square className="w-3.5 h-3.5 fill-current animate-pulse shrink-0" />
+                <span>ABORT</span>
               </button>
             ) : (
               <button
                 type="submit"
-                className="h-13 px-7 bg-[#ff9d00] text-[#06090e] hover:bg-[#ffb033] rounded-lg font-mono font-black text-xs sm:text-sm flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(255,157,0,0.45)] cursor-pointer tracking-wider"
+                disabled={!ticker.trim()}
+                className="h-11 px-6 sm:px-7 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-500 text-slate-950 font-bold text-xs font-sans tracking-wider flex items-center justify-center gap-2.5 transition-all duration-150 shadow-sm shadow-amber-500/20 active:scale-[0.99] cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Play className="w-4 h-4 fill-current" />
+                <Sparkles className="w-3.5 h-3.5 fill-slate-950/20 shrink-0" />
                 <span>RUN SWARM ANALYSIS</span>
               </button>
             )}
           </div>
         </div>
 
-        {/* Quick Preset Ticker Buttons Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#141b27]">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-xs font-mono font-bold text-[#8492a6] mr-1 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#ff9d00]" /> QUICK PRESETS:
-            </span>
-            {PRESET_TICKERS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => {
-                  setTicker(t);
-                  onRunAnalysis({
-                    ticker: t,
-                    tradeDate,
-                    riskTolerance,
-                    horizon,
-                    sectorExposure,
-                  });
-                }}
-                disabled={isAnalyzing}
-                className={`px-3 py-1.5 text-xs font-mono font-bold rounded-md border transition-all cursor-pointer ${
-                  ticker === t
-                    ? "bg-[#ff9d00]/25 border-[#ff9d00] text-[#ff9d00] shadow-[0_0_10px_rgba(255,157,0,0.25)]"
-                    : "bg-[#0d121d] border-[#1e293b] text-[#94a3b8] hover:border-[#ff9d00]/50 hover:text-[#e2e8f0]"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={onOpenKeyModal}
-            className="text-xs font-mono font-bold flex items-center gap-1.5 text-[#ff9d00] hover:text-[#ffb033] hover:underline cursor-pointer"
-          >
-            <Key className="w-3.5 h-3.5" />
-            <span>{hasApiKey ? "Edit OpenRouter Key" : "Configure API Key"}</span>
-          </button>
+        {/* Quick Ticker Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 text-xs no-scrollbar">
+          <span className="text-[11px] font-medium text-slate-500 shrink-0 select-none mr-1">
+            Presets:
+          </span>
+          {PRESET_TICKERS.map((preset) => (
+            <button
+              key={preset.symbol}
+              type="button"
+              disabled={isAnalyzing}
+              onClick={() => setTicker(preset.symbol)}
+              className={`px-4 py-1.5 rounded-full text-xs font-mono tracking-wide transition-all duration-150 shrink-0 cursor-pointer border flex items-center justify-center ${
+                ticker === preset.symbol
+                  ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-bold shadow-sm shadow-amber-500/10 ring-1 ring-amber-500/20"
+                  : "bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/50"
+              }`}
+            >
+              {preset.symbol}
+            </button>
+          ))}
         </div>
 
-        {/* Advanced Parameters Panel */}
+        {/* Collapsible Strategy & Context Drawer */}
         {showAdvanced && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 pt-4 border-t border-[#1a2333] bg-[#070b12] p-5 rounded-lg border border-[#1e293b]">
-            <div>
-              <label className="text-xs text-[#8492a6] font-mono font-bold flex items-center gap-1.5 mb-2">
-                <Calendar className="w-3.5 h-3.5 text-[#00e5ff]" /> ANALYSIS DATE
-              </label>
-              <CalendarPicker
-                selectedDate={tradeDate}
-                onSelectDate={setTradeDate}
-                disabled={isAnalyzing}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs text-[#8492a6] font-mono font-bold flex items-center gap-1.5 mb-2">
-                <Shield className="w-3.5 h-3.5 text-[#00ff66]" /> RISK TOLERANCE
-              </label>
-              <select
-                value={riskTolerance}
-                onChange={(e) => setRiskTolerance(e.target.value as any)}
-                disabled={isAnalyzing}
-                className="w-full bg-[#0d121d] border border-[#1e293b] text-[#e2e8f0] font-mono text-xs px-3 py-2.5 rounded-md focus:border-[#00ff66] focus:outline-none"
-              >
-                <option value="conservative">CONSERVATIVE (Capital Preservation)</option>
-                <option value="moderate">MODERATE (Balanced Risk/Return)</option>
-                <option value="aggressive">AGGRESSIVE (High Beta / Growth)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs text-[#8492a6] font-mono font-bold flex items-center gap-1.5 mb-2">
-                <Compass className="w-3.5 h-3.5 text-[#ff9d00]" /> INVESTMENT HORIZON
-              </label>
-              <select
-                value={horizon}
-                onChange={(e) => setHorizon(e.target.value as any)}
-                disabled={isAnalyzing}
-                className="w-full bg-[#0d121d] border border-[#1e293b] text-[#e2e8f0] font-mono text-xs px-3 py-2.5 rounded-md focus:border-[#ff9d00] focus:outline-none"
-              >
-                <option value="short_term">SHORT TERM (1-4 Weeks)</option>
-                <option value="medium_term">MEDIUM TERM (1-6 Months)</option>
-                <option value="long_term">LONG TERM (1+ Years)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs text-[#8492a6] font-mono font-bold flex items-center gap-1.5 mb-2">
-                <Key className="w-3.5 h-3.5 text-[#ff9d00]" /> OPENROUTER KEY
-              </label>
-              <button
-                type="button"
-                onClick={onOpenKeyModal}
-                className="w-full h-[38px] text-left bg-[#0d121d] border border-[#1e293b] hover:border-[#ff9d00]/60 text-[#e2e8f0] font-mono text-xs px-3 rounded-md flex items-center justify-between cursor-pointer"
-              >
-                <span className={hasApiKey ? "text-[#00ff66] font-bold" : "text-[#ff9d00]"}>
-                  {hasApiKey ? "••••••••••••••••" : "Set API Key"}
+          <div className="pt-3.5 border-t border-slate-800/80 grid grid-cols-1 md:grid-cols-3 gap-3 animate-in fade-in slide-in-from-top-1.5 duration-150">
+            {/* Risk Tolerance */}
+            <div className="p-4 rounded-xl bg-[#090D16] border border-slate-800/90 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-rose-400" /> Risk Tolerance
                 </span>
-                <span className="text-[11px] bg-[#1e293b] px-2 py-0.5 rounded text-[#94a3b8] font-bold">
-                  Edit
+                <span className="font-mono text-[10px] text-slate-500 uppercase">
+                  {riskTolerance}
                 </span>
-              </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-0.5">
+                {(["conservative", "moderate", "aggressive"] as const).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setRiskTolerance(level)}
+                    className={`py-1.5 px-3 rounded-full text-[11px] font-medium capitalize transition-all cursor-pointer border flex items-center justify-center ${
+                      riskTolerance === level
+                        ? "bg-rose-500/15 border-rose-500/40 text-rose-300 font-semibold shadow-xs"
+                        : "bg-slate-900 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time Horizon */}
+            <div className="p-4 rounded-xl bg-[#090D16] border border-slate-800/90 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-cyan-400" /> Target Horizon
+                </span>
+                <span className="font-mono text-[10px] text-slate-500 uppercase">
+                  {horizon.replace("_", " ")}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-0.5">
+                {(
+                  [
+                    { id: "short_term", label: "Short" },
+                    { id: "medium_term", label: "Medium" },
+                    { id: "long_term", label: "Long" },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setHorizon(item.id)}
+                    className={`py-1.5 px-3 rounded-full text-[11px] font-medium transition-all cursor-pointer border flex items-center justify-center ${
+                      horizon === item.id
+                        ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-300 font-semibold shadow-xs"
+                        : "bg-slate-900 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Sector Exposure */}
+            <div className="p-4 rounded-xl bg-[#090D16] border border-slate-800/90 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-slate-300 flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-indigo-400" /> Sector Exposure
+                </span>
+                <span className="font-mono text-[10px] text-slate-500 uppercase">
+                  {sectorExposure.replace("_", " ")}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-0.5">
+                {(
+                  [
+                    { id: "tech_heavy", label: "Tech" },
+                    { id: "banking_focused", label: "Banking" },
+                    { id: "diversified", label: "Diversified" },
+                  ] as const
+                ).map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setSectorExposure(item.id)}
+                    className={`py-1.5 px-3 rounded-full text-[11px] font-medium transition-all cursor-pointer border flex items-center justify-center ${
+                      sectorExposure === item.id
+                        ? "bg-indigo-500/15 border-indigo-500/40 text-indigo-300 font-semibold shadow-xs"
+                        : "bg-slate-900 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

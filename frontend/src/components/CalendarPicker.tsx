@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Check, History, Sparkles } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
 export const getTodayDateString = (): string => {
   const now = new Date();
@@ -14,7 +14,7 @@ export const getTodayDateString = (): string => {
 interface CalendarPickerProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
-  maxDate?: string; // defaults to today (YYYY-MM-DD)
+  maxDate?: string;
   disabled?: boolean;
 }
 
@@ -30,12 +30,10 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parse current viewing month/year from selectedDate or today
   const initialDate = selectedDate ? new Date(selectedDate + "T00:00:00") : new Date();
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
-  const [viewMonth, setViewMonth] = useState(initialDate.getMonth()); // 0-indexed
+  const [viewMonth, setViewMonth] = useState(initialDate.getMonth());
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -48,7 +46,6 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isOpen]);
 
-  // Sync view when selectedDate changes externally
   useEffect(() => {
     if (selectedDate) {
       const d = new Date(selectedDate + "T00:00:00");
@@ -60,20 +57,18 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
   }, [selectedDate]);
 
   const monthNames = [
-    "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-    "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
   ];
 
-  const daysOfWeek = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
+  const daysOfWeek = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
-  // Helper to format Date to YYYY-MM-DD
   const formatDateStr = (year: number, month: number, day: number) => {
     const m = String(month + 1).padStart(2, "0");
     const d = String(day).padStart(2, "0");
     return `${year}-${m}-${d}`;
   };
 
-  // Navigate months
   const handlePrevMonth = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -102,9 +97,7 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
     }
   };
 
-  // Generate calendar grid days
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  // Sunday is 0, Monday is 1... Adjust to Monday as 0:
   const firstDayIndex = (new Date(viewYear, viewMonth, 1).getDay() + 6) % 7;
 
   const days = [];
@@ -115,7 +108,6 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
     days.push(day);
   }
 
-  // Quick preset handlers
   const handleSelectOffset = (daysOffset: number) => {
     const d = new Date();
     d.setDate(d.getDate() - daysOffset);
@@ -127,79 +119,78 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
   const isToday = selectedDate === todayStr;
 
   return (
-    <div className="relative font-mono" ref={containerRef}>
-      {/* Trigger Button / Display */}
+    <div className="relative font-sans" ref={containerRef}>
+      {/* Trigger Button */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between px-3 py-2 bg-[#0d121d] border rounded text-xs transition-all ${
+        className={`w-full h-11 flex items-center justify-between px-4 sm:px-5 bg-[#090D16] border rounded-full text-xs transition-all duration-150 cursor-pointer ${
           isOpen
-            ? "border-[#00e5ff] shadow-[0_0_12px_rgba(0,229,255,0.25)] text-[#e2e8f0]"
-            : "border-[#1e293b] hover:border-[#00e5ff]/60 text-[#cbd5e1]"
-        }`}
+            ? "border-amber-500/50 ring-1 ring-amber-500/30 text-white"
+            : "border-slate-800/90 hover:border-slate-700 text-slate-300 hover:text-white"
+        } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        <div className="flex items-center gap-2">
-          <CalendarIcon className="w-3.5 h-3.5 text-[#00e5ff]" />
-          <span className="font-bold tracking-wider">{selectedDate || todayStr}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="font-mono font-medium text-slate-200 text-xs tracking-tight truncate">
+            {selectedDate || todayStr}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5">
-          {isToday ? (
-            <span className="text-[10px] bg-[#00ff66]/15 border border-[#00ff66]/40 text-[#00ff66] px-1.5 py-0.5 rounded font-bold">
-              TODAY
-            </span>
-          ) : (
-            <span className="text-[10px] bg-[#ff9d00]/15 border border-[#ff9d00]/40 text-[#ff9d00] px-1.5 py-0.5 rounded font-bold">
-              BACKTEST
-            </span>
-          )}
-        </div>
+        <span
+          className={`text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full shrink-0 ml-2 tracking-wide ${
+            isToday
+              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+              : "bg-amber-500/10 text-amber-400/90 border border-amber-500/20"
+          }`}
+        >
+          {isToday ? "LIVE" : "BACKTEST"}
+        </span>
       </button>
 
-      {/* Popover Calendar Modal */}
+      {/* Popover Calendar */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 z-50 w-72 bg-[#090d16] border border-[#00e5ff]/40 rounded-lg shadow-[0_8px_30px_rgba(0,0,0,0.8)] p-3 backdrop-blur-md">
+        <div className="absolute right-0 sm:left-0 top-full mt-2.5 z-50 w-72 bg-[#0B0F19] border border-slate-800 rounded-2xl shadow-2xl p-4 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
           {/* Quick Presets */}
-          <div className="grid grid-cols-3 gap-1 mb-3 pb-2 border-b border-[#1a2333]">
+          <div className="grid grid-cols-3 gap-1.5 mb-3 pb-2.5 border-b border-slate-800/80">
             <button
               type="button"
               onClick={() => handleSelectOffset(0)}
-              className={`px-1.5 py-1 text-[10px] rounded border transition-colors ${
+              className={`px-3 py-1.5 text-[11px] font-mono rounded-full border transition-colors flex items-center justify-center ${
                 isToday
-                  ? "bg-[#00e5ff]/20 border-[#00e5ff] text-[#00e5ff] font-bold"
-                  : "bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:text-[#e2e8f0]"
+                  ? "bg-amber-500/20 border-amber-500/40 text-amber-300 font-bold"
+                  : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white"
               }`}
             >
-              TODAY
+              Today
             </button>
             <button
               type="button"
               onClick={() => handleSelectOffset(1)}
-              className="px-1.5 py-1 text-[10px] rounded border bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:text-[#e2e8f0] transition-colors"
+              className="px-3 py-1.5 text-[11px] font-mono rounded-full border bg-slate-900 border-slate-800 text-slate-400 hover:text-white transition-colors flex items-center justify-center"
             >
-              YESTERDAY
+              -1 Day
             </button>
             <button
               type="button"
               onClick={() => handleSelectOffset(7)}
-              className="px-1.5 py-1 text-[10px] rounded border bg-[#0f172a] border-[#1e293b] text-[#94a3b8] hover:text-[#e2e8f0] transition-colors"
+              className="px-3 py-1.5 text-[11px] font-mono rounded-full border bg-slate-900 border-slate-800 text-slate-400 hover:text-white transition-colors flex items-center justify-center"
             >
-              -7 DAYS
+              -7 Days
             </button>
           </div>
 
-          {/* Month / Year Header Navigation */}
-          <div className="flex items-center justify-between mb-2">
+          {/* Month / Year Header */}
+          <div className="flex items-center justify-between mb-2 px-1">
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1 hover:bg-[#1a2333] rounded text-[#94a3b8] hover:text-[#00e5ff] transition-colors"
-              title="Previous Month"
+              className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <span className="text-xs font-bold text-[#e2e8f0] tracking-wider">
+            <span className="text-xs font-semibold text-slate-200">
               {monthNames[viewMonth]} {viewYear}
             </span>
 
@@ -207,23 +198,20 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
               type="button"
               onClick={handleNextMonth}
               disabled={isNextMonthDisabled}
-              className={`p-1 rounded transition-colors ${
+              className={`p-1 rounded-lg transition-colors ${
                 isNextMonthDisabled
-                  ? "opacity-20 cursor-not-allowed text-[#475569]"
-                  : "hover:bg-[#1a2333] text-[#94a3b8] hover:text-[#00e5ff]"
+                  ? "opacity-20 cursor-not-allowed text-slate-600"
+                  : "hover:bg-slate-800 text-slate-400 hover:text-white"
               }`}
-              title="Next Month"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 text-center mb-1">
+          {/* Weekdays */}
+          <div className="grid grid-cols-7 gap-1 text-center mb-1 text-[10px] font-mono font-medium text-slate-500">
             {daysOfWeek.map((day) => (
-              <span key={day} className="text-[10px] font-bold text-[#64748b]">
-                {day}
-              </span>
+              <span key={day}>{day}</span>
             ))}
           </div>
 
@@ -248,38 +236,20 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
                     onSelectDate(dateStr);
                     setIsOpen(false);
                   }}
-                  className={`h-7 w-7 rounded text-[11px] font-mono flex items-center justify-center relative transition-all ${
+                  className={`h-7 w-7 rounded-lg text-xs font-mono flex items-center justify-center transition-all ${
                     isFuture
-                      ? "opacity-20 cursor-not-allowed text-[#475569] bg-transparent"
+                      ? "opacity-20 cursor-not-allowed text-slate-600"
                       : isSelected
-                      ? "bg-[#00e5ff] text-[#06090e] font-extrabold shadow-[0_0_10px_rgba(0,229,255,0.6)]"
+                      ? "bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/30"
                       : isCurrentDay
-                      ? "border border-[#00ff66] text-[#00ff66] hover:bg-[#00ff66]/20"
-                      : "text-[#cbd5e1] hover:bg-[#1a2333] hover:text-[#00e5ff]"
+                      ? "border border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
                   }`}
                 >
                   {day}
-                  {isCurrentDay && !isSelected && (
-                    <span className="absolute bottom-0.5 w-1 h-1 bg-[#00ff66] rounded-full" />
-                  )}
                 </button>
               );
             })}
-          </div>
-
-          {/* Footer note */}
-          <div className="mt-3 pt-2 border-t border-[#1a2333] flex items-center justify-between text-[9px] text-[#64748b]">
-            <span>* Future dates restricted</span>
-            <button
-              type="button"
-              onClick={() => {
-                onSelectDate(todayStr);
-                setIsOpen(false);
-              }}
-              className="text-[#00e5ff] hover:underline"
-            >
-              Reset to Today
-            </button>
           </div>
         </div>
       )}

@@ -9,32 +9,40 @@ import { AgentGrid } from "@/components/AgentGrid";
 import { RawTerminal } from "@/components/RawTerminal";
 import { ApiKeyModal } from "@/components/ApiKeyModal";
 import { getTodayDateString } from "@/components/CalendarPicker";
+import {
+  Sparkles,
+  Layers,
+  ShieldAlert,
+  BrainCircuit,
+  TrendingUp,
+  DollarSign,
+  LineChart,
+  Globe,
+  Newspaper,
+  ArrowRight,
+  AlertCircle,
+} from "lucide-react";
 
 const getApiBaseUrl = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  if (typeof window !== "undefined") {
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return "http://localhost:8000";
-    }
-  }
-  return "https://quantintel.onrender.com";
+  return process.env.NEXT_PUBLIC_API_URL || "https://quantintel.onrender.com";
 };
 
-// Helper to extract clean Markdown text from tool results or JSON structures
+// Helper to extract clean text from tool results or JSON structures
 const cleanReport = (val: any): string => {
   if (!val) return "";
   if (typeof val !== "string") return String(val);
 
   let trimmed = val.trim();
-  // Handle stringified Python AST or list of TextContent/dicts like "[{'type': 'text', 'text': '...'}]"
-  if ((trimmed.startsWith("[{") && trimmed.endsWith("}]")) || (trimmed.startsWith("[TextContent(") && trimmed.endsWith(")]"))) {
+  if (
+    (trimmed.startsWith("[{") && trimmed.endsWith("}]")) ||
+    (trimmed.startsWith("[TextContent(") && trimmed.endsWith(")]"))
+  ) {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
         return parsed.map((item) => item.text || item.content || JSON.stringify(item)).join("\n\n");
       }
     } catch {
-      // Python dict syntax with single quotes
       const regex = /'text':\s*'([\s\S]*?)'(?:,\s*'type'|\})/g;
       const matches: string[] = [];
       let match;
@@ -57,7 +65,7 @@ const cleanReport = (val: any): string => {
 
 export default function Home() {
   const [apiStatus, setApiStatus] = useState<"connected" | "connecting" | "offline">("connecting");
-  const [apiUrl, setApiUrl] = useState("http://localhost:8000");
+  const [apiUrl, setApiUrl] = useState("https://quantintel.onrender.com");
   const [ticker, setTicker] = useState("AAPL");
   const [tradeDate, setTradeDate] = useState(() => getTodayDateString());
 
@@ -125,7 +133,6 @@ export default function Home() {
         } else {
           setApiStatus("offline");
         }
-
       } catch (err) {
         console.warn("API Health Check Warning:", err);
         setApiStatus("offline");
@@ -157,12 +164,11 @@ export default function Home() {
   };
 
   const handleRunAnalysis = async (config: AnalysisConfig) => {
-    // If no key is set, prompt user to set it
     if (!apiKey.trim()) {
       setIsKeyModalOpen(true);
       setStreamState((prev) => ({
         ...prev,
-        logs: [...prev.logs, "[AUTH] Please set your OpenRouter API key to initiate the analysis."],
+        logs: [...prev.logs, "[AUTH] Please set your OpenRouter API key to initiate analysis."],
       }));
       return;
     }
@@ -184,7 +190,7 @@ export default function Home() {
       phase1Complete: false,
       phase2Complete: false,
       phase3Complete: false,
-      logs: [`[INIT] Target Ticker: ${config.ticker} | Date: ${config.tradeDate} | Using User OpenRouter Key`],
+      logs: [`[INIT] Target: ${config.ticker} | Trade Date: ${config.tradeDate} | Swarm Active`],
     });
 
     if (abortControllerRef.current) {
@@ -230,8 +236,6 @@ export default function Home() {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        
-        // Split by standard SSE double-newline message delimiter
         const normalized = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
         const messageBlocks = normalized.split("\n\n");
         buffer = messageBlocks.pop() || "";
@@ -244,10 +248,7 @@ export default function Home() {
 
           const lines = block.split("\n");
           for (const line of lines) {
-            if (line.startsWith(":")) {
-              // Ignore SSE ping/comment lines
-              continue;
-            }
+            if (line.startsWith(":")) continue;
             if (line.startsWith("event:")) {
               eventType = line.slice(6).trim();
             } else if (line.startsWith("data:")) {
@@ -318,9 +319,12 @@ export default function Home() {
     } catch (err: any) {
       if (err.name === "AbortError") return;
       console.error("Stream execution error:", err);
-      const isNetworkError = err.message?.includes("failed") || err.message?.includes("NetworkError") || err.name === "TypeError";
+      const isNetworkError =
+        err.message?.includes("failed") ||
+        err.message?.includes("NetworkError") ||
+        err.name === "TypeError";
       const detailMsg = isNetworkError
-        ? `Failed to connect to backend at ${apiUrl || getApiBaseUrl()}. Please make sure the FastAPI server is running (uvicorn quantintel.api.app:app --port 8000).`
+        ? `Failed to connect to backend at ${apiUrl || getApiBaseUrl()}. Please verify your backend server deployment or network connection.`
         : err.message;
 
       setStreamState((prev) => ({
@@ -332,9 +336,17 @@ export default function Home() {
     }
   };
 
+  const hasAnalysisData =
+    !!finalRecommendation ||
+    !!fundamentalsReport ||
+    !!riskReport ||
+    !!technicalReport ||
+    !!macroReport ||
+    !!sentimentReport;
+
   return (
-    <div className="min-h-screen bg-[#06090e] text-[#e2e8f0] flex flex-col font-mono">
-      {/* Header Bar */}
+    <div className="min-h-screen bg-ambient text-slate-100 flex flex-col font-sans">
+      {/* Top Header Navbar */}
       <Header
         apiStatus={apiStatus}
         apiUrl={apiUrl}
@@ -342,9 +354,9 @@ export default function Home() {
         onOpenKeyModal={() => setIsKeyModalOpen(true)}
       />
 
-      {/* Main Content Area */}
-      <main className="max-w-[1700px] w-full mx-auto px-4 py-6 flex-1">
-        {/* Command Bar Input */}
+      {/* Main Container */}
+      <main className="max-w-[1700px] w-full mx-auto px-4 sm:px-6 py-6 flex-1">
+        {/* Unified Command Cockpit */}
         <CommandBar
           onRunAnalysis={handleRunAnalysis}
           onStopAnalysis={handleStopAnalysis}
@@ -354,26 +366,127 @@ export default function Home() {
           onOpenKeyModal={() => setIsKeyModalOpen(true)}
         />
 
+        {/* Error Alert Banner if any */}
+        {streamState.error && (
+          <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex items-start gap-3 text-xs animate-in fade-in duration-200">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <strong className="font-semibold block mb-0.5">Execution Error</strong>
+              <span>{streamState.error}</span>
+            </div>
+          </div>
+        )}
+
         {/* Live Swarm Execution Progress Tracker */}
         <StreamProgress streamState={streamState} ticker={ticker} />
 
-        {/* Supervisor Final Verdict */}
-        <VerdictHero
-          ticker={ticker}
-          tradeDate={tradeDate}
-          recommendationText={finalRecommendation}
-        />
+        {/* 1. Multi-Agent Intelligence & Risk Guard Breakdown (Phase 1: 4 Swarm Agents -> Phase 2: Risk Guard) */}
+        {hasAnalysisData && (
+          <AgentGrid
+            fundamentalsReport={fundamentalsReport}
+            sentimentReport={sentimentReport}
+            technicalReport={technicalReport}
+            macroReport={macroReport}
+            riskReport={riskReport}
+          />
+        )}
 
-        {/* 5-Agent Detailed Grid Breakdown */}
-        <AgentGrid
-          fundamentalsReport={fundamentalsReport}
-          sentimentReport={sentimentReport}
-          technicalReport={technicalReport}
-          macroReport={macroReport}
-          riskReport={riskReport}
-        />
+        {/* 2. Executive Final Verdict (Phase 3: Supervisor Final Decision & Recommendation) */}
+        {finalRecommendation && (
+          <VerdictHero
+            ticker={ticker}
+            tradeDate={tradeDate}
+            recommendationText={finalRecommendation}
+          />
+        )}
 
-        {/* Collapsible Developer Stream Terminal */}
+        {/* Empty / Welcome State when no analysis has been run yet */}
+        {!hasAnalysisData && !streamState.isAnalyzing && (
+          <div className="glass-panel p-8 sm:p-12 mb-8 text-center relative overflow-hidden">
+            <div className="max-w-2xl mx-auto flex flex-col items-center">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-indigo-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-5 shadow-lg shadow-amber-500/10">
+                <Sparkles className="w-7 h-7" />
+              </div>
+
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
+                Multi-Agent Quantitative Intelligence
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-400 max-w-lg mb-8 leading-relaxed">
+                Execute parallel institutional-grade AI agents across fundamentals, macro regimes, technical trends, and tail-risk containment with LangGraph synthesis.
+              </p>
+
+              {/* 5 Pillars Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full mb-8">
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
+                  <DollarSign className="w-4 h-4 text-emerald-400 mb-1.5" />
+                  <div className="text-xs font-semibold text-white">1. Valuation</div>
+                  <div className="text-[10px] font-mono text-slate-500">40% Weight</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
+                  <Globe className="w-4 h-4 text-indigo-400 mb-1.5" />
+                  <div className="text-xs font-semibold text-white">2. Macro Regime</div>
+                  <div className="text-[10px] font-mono text-slate-500">20% Weight</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
+                  <LineChart className="w-4 h-4 text-cyan-400 mb-1.5" />
+                  <div className="text-xs font-semibold text-white">3. Technicals</div>
+                  <div className="text-[10px] font-mono text-slate-500">5% Weight</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
+                  <Newspaper className="w-4 h-4 text-amber-400 mb-1.5" />
+                  <div className="text-xs font-semibold text-white">4. Sentiment</div>
+                  <div className="text-[10px] font-mono text-slate-500">5% Weight</div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-rose-500/30 bg-rose-950/10 text-left col-span-2 sm:col-span-1">
+                  <ShieldAlert className="w-4 h-4 text-rose-400 mb-1.5" />
+                  <div className="text-xs font-semibold text-white">5. Risk Guard</div>
+                  <div className="text-[10px] font-mono text-rose-400">30% Weight</div>
+                </div>
+              </div>
+
+              {/* Quick Launch CTA */}
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() =>
+                    handleRunAnalysis({
+                      ticker: "AAPL",
+                      tradeDate,
+                      riskTolerance: "moderate",
+                      horizon: "medium_term",
+                      sectorExposure: "tech_heavy",
+                    })
+                  }
+                  className="px-6 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <span>Analyze AAPL (Tech Heavy)</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
+                </button>
+
+                <button
+                  onClick={() =>
+                    handleRunAnalysis({
+                      ticker: "NVDA",
+                      tradeDate,
+                      riskTolerance: "aggressive",
+                      horizon: "long_term",
+                      sectorExposure: "tech_heavy",
+                    })
+                  }
+                  className="px-6 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-xs"
+                >
+                  <span>Analyze NVDA (Growth &amp; AI)</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Collapsible Live Stream Terminal Drawer */}
         <RawTerminal logs={streamState.logs} />
       </main>
 
@@ -385,9 +498,19 @@ export default function Home() {
         onSaveKey={handleSaveApiKey}
       />
 
-      {/* Footer */}
-      <footer className="w-full bg-[#040609] border-t border-[#121824] py-3 text-center text-xs text-[#64748b]">
-        QUANTINTEL TERMINAL &copy; 2026 — MULTI-AGENT SWARM ENGINE POWERED BY FASTMCP &amp; LANGGRAPH
+      {/* Modern Slim Footer */}
+      <footer className="w-full bg-[#05070C] border-t border-white/[0.04] py-3.5 px-6 text-center text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-slate-400">QUANTINTEL</span>
+          <span>© 2026 Institutional Swarm Platform</span>
+        </div>
+        <div className="flex items-center gap-4 text-[11px] text-slate-600">
+          <span>FastMCP 2.0</span>
+          <span>•</span>
+          <span>LangGraph Architecture</span>
+          <span>•</span>
+          <span>OpenRouter Inference</span>
+        </div>
       </footer>
     </div>
   );
