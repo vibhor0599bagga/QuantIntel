@@ -87,7 +87,7 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
                 QUANT<span className="text-amber-400">INTEL</span>
               </span>
               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-800/80 border border-slate-700/60 text-slate-400 tracking-wide">
-                v1.0
+                v1.9
               </span>
             </div>
           </div>

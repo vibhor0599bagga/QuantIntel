@@ -125,20 +125,20 @@ export const CalendarPicker: React.FC<CalendarPickerProps> = ({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-11 flex items-center justify-between px-4 sm:px-5 bg-[#090D16] border rounded-full text-xs transition-all duration-150 cursor-pointer ${
+        className={`w-full h-9 sm:h-[38px] flex items-center justify-between px-3.5 bg-[#090D16] border rounded-full text-xs transition-all duration-150 cursor-pointer ${
           isOpen
             ? "border-amber-500/50 ring-1 ring-amber-500/30 text-white"
             : "border-slate-800/90 hover:border-slate-700 text-slate-300 hover:text-white"
         } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <CalendarIcon className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarIcon className="w-3 h-3 text-slate-400 shrink-0" />
           <span className="font-mono font-medium text-slate-200 text-xs tracking-tight truncate">
             {selectedDate || todayStr}
           </span>
         </div>
         <span
-          className={`text-[10px] font-mono font-medium px-2.5 py-0.5 rounded-full shrink-0 ml-2 tracking-wide ${
+          className={`text-[9px] font-mono font-semibold px-2 py-0.5 rounded-full shrink-0 ml-1.5 tracking-wide ${
             isToday
               ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
               : "bg-amber-500/10 text-amber-400/90 border border-amber-500/20"

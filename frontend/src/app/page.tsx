@@ -67,7 +67,7 @@ const cleanReport = (val: any): string => {
 export default function Home() {
   const [apiStatus, setApiStatus] = useState<"connected" | "connecting" | "offline">("connecting");
   const [apiUrl, setApiUrl] = useState("https://quantintel.onrender.com");
-  const [ticker, setTicker] = useState("AAPL");
+  const [ticker, setTicker] = useState("NVDA");
   const [tradeDate, setTradeDate] = useState(() => getTodayDateString());
 
   // User OpenRouter API Key state
@@ -345,6 +345,9 @@ export default function Home() {
     !!macroReport ||
     !!sentimentReport;
 
+  // UI only: welcome screen runs flush to the footer, results view keeps normal padding
+  const isWelcomeView = !hasAnalysisData && !streamState.isAnalyzing;
+
   return (
     <div className="min-h-screen bg-ambient text-slate-100 flex flex-col font-sans">
       {/* Top Header Navbar */}
@@ -356,7 +359,10 @@ export default function Home() {
       />
 
       {/* Main Container */}
-      <main className="max-w-[1700px] w-full mx-auto px-4 sm:px-6 py-6 flex-1">
+      <main
+        className={`max-w-[1700px] w-full mx-auto px-4 sm:px-6 pt-6 flex-1 flex flex-col ${isWelcomeView ? "pb-0" : "pb-6"
+          }`}
+      >
         {/* Unified Command Cockpit */}
         <CommandBar
           onRunAnalysis={handleRunAnalysis}
@@ -402,61 +408,61 @@ export default function Home() {
         )}
 
         {/* Empty / Welcome State when no analysis has been run yet */}
-        {!hasAnalysisData && !streamState.isAnalyzing && (
-          <div className="glass-panel py-12 px-6 sm:py-14 sm:px-8 mb-8 text-center relative overflow-hidden flex flex-col items-center justify-center">
-            <div className="max-w-4xl mx-auto flex flex-col items-center text-center w-full relative z-10">
+        {isWelcomeView && (
+          <div className="relative flex-1 flex flex-col items-center justify-center overflow-hidden mt-1 sm:mt-2 px-4 py-6 sm:py-8 min-h-[350px] text-center">
+            <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center text-center w-full">
               {/* Hero Sparkles Icon Box */}
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-amber-500/15 via-amber-500/5 to-amber-950/20 border border-amber-400/40 flex items-center justify-center text-amber-400 mb-4 shadow-[0_0_26px_rgba(245,158,11,0.22)]">
-                <Sparkles className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-b from-amber-500/20 via-amber-500/[0.08] to-amber-950/20 border border-amber-400/40 flex items-center justify-center text-amber-400 mb-4 shadow-[0_0_24px_rgba(245,158,11,0.2)]">
+                <Sparkles className="w-5 h-5" />
               </div>
 
-              <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-2 text-center tracking-tight">
+              <h2 className="text-xl sm:text-[22px] font-bold text-white mb-2 text-center tracking-tight">
                 Multi-Agent Quantitative Intelligence
               </h2>
-              <p className="text-xs sm:text-[13px] text-slate-400 max-w-[490px] mb-8 leading-relaxed text-center">
+              <p className="text-xs sm:text-[13px] text-slate-400 max-w-[500px] mb-6 leading-relaxed text-center">
                 Execute parallel institutional-grade AI agents across fundamentals, macro regimes, technical trends, and tail-risk containment with LangGraph synthesis.
               </p>
 
-              {/* 5 Pillars Row Cards (Exact Boxy Landscape Height & Glows) */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 w-full max-w-[820px] mx-auto">
+              {/* 5 Pillar Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full max-w-[840px] mx-auto">
                 {/* 1. Valuation */}
-                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-emerald-500/60 shadow-[0_0_18px_rgba(16,185,129,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
-                  <DollarSign className="w-5 h-5 text-emerald-400 mb-1.5" />
-                  <div className="text-sm font-bold text-white whitespace-nowrap">1. Valuation</div>
-                  <div className="text-xs font-mono text-slate-400 mt-1">40% Weight</div>
+                <div className="h-[78px] px-3 rounded-xl bg-[#070b14] border border-emerald-500/50 shadow-[0_0_16px_rgba(16,185,129,0.15)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <DollarSign className="w-4 h-4 text-emerald-400 mb-1" />
+                  <div className="text-xs font-bold text-white whitespace-nowrap">1. Valuation</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">40% Weight</div>
                 </div>
 
                 {/* 2. Macro Regime */}
-                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-indigo-500/60 shadow-[0_0_18px_rgba(99,102,241,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
-                  <Globe className="w-5 h-5 text-indigo-400 mb-1.5" />
-                  <div className="text-sm font-bold text-white whitespace-nowrap">2. Macro Regime</div>
-                  <div className="text-xs font-mono text-indigo-300/80 mt-1">20% Weight</div>
+                <div className="h-[78px] px-3 rounded-xl bg-[#070b14] border border-indigo-500/50 shadow-[0_0_16px_rgba(99,102,241,0.15)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <Globe className="w-4 h-4 text-indigo-400 mb-1" />
+                  <div className="text-xs font-bold text-white whitespace-nowrap">2. Macro Regime</div>
+                  <div className="text-[11px] text-indigo-300 mt-0.5">20% Weight</div>
                 </div>
 
                 {/* 3. Technicals */}
-                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-cyan-500/60 shadow-[0_0_18px_rgba(6,182,212,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
-                  <LineChart className="w-5 h-5 text-cyan-400 mb-1.5" />
-                  <div className="text-sm font-bold text-white whitespace-nowrap">3. Technicals</div>
-                  <div className="text-xs font-mono text-cyan-300/80 mt-1">5% Weight</div>
+                <div className="h-[78px] px-3 rounded-xl bg-[#070b14] border border-cyan-500/50 shadow-[0_0_16px_rgba(6,182,212,0.15)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <LineChart className="w-4 h-4 text-cyan-400 mb-1" />
+                  <div className="text-xs font-bold text-white whitespace-nowrap">3. Technicals</div>
+                  <div className="text-[11px] text-cyan-300 mt-0.5">5% Weight</div>
                 </div>
 
                 {/* 4. Sentiment */}
-                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-amber-500/60 shadow-[0_0_18px_rgba(245,158,11,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
-                  <Newspaper className="w-5 h-5 text-amber-400 mb-1.5" />
-                  <div className="text-sm font-bold text-white whitespace-nowrap">4. Sentiment</div>
-                  <div className="text-xs font-mono text-amber-300/80 mt-1">5% Weight</div>
+                <div className="h-[78px] px-3 rounded-xl bg-[#070b14] border border-amber-500/50 shadow-[0_0_16px_rgba(245,158,11,0.15)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <Newspaper className="w-4 h-4 text-amber-400 mb-1" />
+                  <div className="text-xs font-bold text-white whitespace-nowrap">4. Sentiment</div>
+                  <div className="text-[11px] text-amber-300 mt-0.5">5% Weight</div>
                 </div>
 
                 {/* 5. Risk Guard */}
-                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-rose-500/60 shadow-[0_0_18px_rgba(244,63,94,0.18)] flex flex-col items-center justify-center text-center col-span-2 sm:col-span-1 transition-all hover:scale-[1.02]">
-                  <Shield className="w-5 h-5 text-rose-400 mb-1.5" />
-                  <div className="text-sm font-bold text-white whitespace-nowrap">5. Risk Guard</div>
-                  <div className="text-xs font-mono text-rose-400 mt-1 font-semibold">30% Weight</div>
+                <div className="h-[78px] px-3 rounded-xl bg-[#070b14] border border-rose-500/50 shadow-[0_0_16px_rgba(244,63,94,0.15)] flex flex-col items-center justify-center text-center col-span-2 sm:col-span-1 transition-all hover:scale-[1.02]">
+                  <Shield className="w-4 h-4 text-rose-400 mb-1" />
+                  <div className="text-xs font-bold text-white whitespace-nowrap">5. Risk Guard</div>
+                  <div className="text-[11px] text-rose-400 mt-0.5">30% Weight</div>
                 </div>
               </div>
 
-              {/* Quick Launch CTA Buttons (Clear Separated Vertical Margin) */}
-              <div className="flex flex-wrap items-center justify-center gap-3.5 mt-7">
+              {/* Quick Launch (borderless text links) */}
+              <div className="flex flex-wrap items-center justify-center gap-6 mt-6">
                 <button
                   onClick={() =>
                     handleRunAnalysis({
@@ -467,7 +473,7 @@ export default function Home() {
                       sectorExposure: "tech_heavy",
                     })
                   }
-                  className="px-5 py-2 rounded-full bg-[#080d19] hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  className="px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <span>Analyze AAPL (Tech Heavy)</span>
                   <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -483,13 +489,23 @@ export default function Home() {
                       sectorExposure: "tech_heavy",
                     })
                   }
-                  className="px-5 py-2 rounded-full bg-[#080d19] hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                  className="px-2 py-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 text-xs font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
                   <span>Analyze NVDA (Growth &amp; AI)</span>
                   <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
                 </button>
               </div>
             </div>
+
+            {/* Faint four-point star watermark, bottom right */}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="absolute bottom-6 right-8 w-8 h-8 text-slate-500 opacity-20 pointer-events-none"
+              fill="currentColor"
+            >
+              <path d="M12 0C12 6.6 17.4 12 24 12C17.4 12 12 17.4 12 24C12 17.4 6.6 12 0 12C6.6 12 12 6.6 12 0Z" />
+            </svg>
           </div>
         )}
 
@@ -505,16 +521,13 @@ export default function Home() {
         onSaveKey={handleSaveApiKey}
       />
 
-      {/* Modern Slim Footer */}
-      <footer className="w-full bg-[#05070C] border-t border-white/[0.04] py-3.5 px-6 text-center text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-5 h-5 rounded-full bg-slate-900 border border-slate-700/80 flex items-center justify-center text-[10px] font-bold text-slate-300">
-            N
-          </div>
+      {/* Slim Footer */}
+      <footer className="w-full bg-[#05070C] border-t border-white/[0.06] py-2 px-2 text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
           <span className="font-bold text-slate-400">QUANTINTEL</span>
           <span>© 2026 Institutional Swarm Platform</span>
         </div>
-        <div className="flex items-center gap-4 text-[11px] text-slate-600">
+        <div className="flex items-center gap-3 text-[11px] text-slate-500">
           <span>FastMCP 2.0</span>
           <span>•</span>
           <span>LangGraph Architecture</span>

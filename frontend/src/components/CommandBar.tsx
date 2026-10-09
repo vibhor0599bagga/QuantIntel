@@ -39,7 +39,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   hasApiKey,
   onOpenKeyModal,
 }) => {
-  const [ticker, setTicker] = useState("AAPL");
+  const [ticker, setTicker] = useState("NVDA");
   const [tradeDate, setTradeDate] = useState(
     defaultTradeDate || getTodayDateString()
   );
@@ -68,15 +68,15 @@ export const CommandBar: React.FC<CommandBarProps> = ({
   };
 
   return (
-    <div className="w-full glass-panel p-4 sm:p-5 mb-8">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
-        {/* Main Search & Controls Row (Unified h-11 / 44px Controls) */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 sm:gap-3">
+    <div className="w-full glass-panel px-4 py-3 sm:px-5 sm:py-3.5 mb-5 rounded-2xl">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+        {/* Main Search & Controls Row (Compact Proportional Controls) */}
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 sm:gap-2.5">
           {/* Ticker Search Box */}
-          <div className="flex-1 min-w-[220px] h-11 flex items-center bg-[#090D16] border border-slate-800/90 rounded-full px-4 sm:px-5 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
+          <div className="flex-1 min-w-[200px] h-9 sm:h-[38px] flex items-center bg-[#090D16] border border-slate-800/90 rounded-full px-3.5 sm:px-4 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
             <div className="flex items-center shrink-0 select-none mr-2">
-              <Search className="w-3.5 h-3.5 text-slate-500 mr-1.5 shrink-0" />
-              <span className="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase">
+              <Search className="w-3 h-3 text-slate-500 mr-1.5 shrink-0" />
+              <span className="text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">
                 TICKER
               </span>
             </div>
@@ -86,12 +86,12 @@ export const CommandBar: React.FC<CommandBarProps> = ({
               onChange={(e) => setTicker(e.target.value.toUpperCase())}
               placeholder="e.g. AAPL, NVDA, HDFCBANK"
               disabled={isAnalyzing}
-              className="w-full bg-transparent text-white font-mono font-bold text-sm tracking-wide focus:outline-none uppercase placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal placeholder:text-xs"
+              className="w-full bg-transparent text-white font-mono font-bold text-xs sm:text-[13px] tracking-wide focus:outline-none uppercase placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal placeholder:text-xs"
             />
           </div>
 
           {/* Quick Date Selector */}
-          <div className="w-full sm:w-[210px] shrink-0">
+          <div className="w-full sm:w-[195px] shrink-0">
             <CalendarPicker
               selectedDate={tradeDate}
               onSelectDate={setTradeDate}
@@ -100,26 +100,26 @@ export const CommandBar: React.FC<CommandBarProps> = ({
           </div>
 
           {/* Action Buttons Group */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Strategy Context Toggle */}
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className={`h-11 px-4.5 sm:px-5 rounded-full border text-xs font-medium flex items-center justify-between gap-2.5 transition-all duration-150 cursor-pointer shrink-0 whitespace-nowrap ${
+              className={`h-9 sm:h-[38px] px-3.5 sm:px-4 rounded-full border text-xs font-medium flex items-center justify-between gap-2 transition-all duration-150 cursor-pointer shrink-0 whitespace-nowrap ${
                 showAdvanced
                   ? "bg-slate-800/90 border-slate-700 text-white ring-1 ring-white/10"
                   : "bg-[#090D16] border-slate-800/90 text-slate-300 hover:border-slate-700 hover:text-white"
               }`}
               title="Portfolio context & risk parameters"
             >
-              <div className="flex items-center gap-2">
-                <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5">
+                <Sliders className="w-3 h-3 text-slate-400 shrink-0" />
                 <span className="text-xs">Strategy Context</span>
               </div>
               {showAdvanced ? (
-                <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
+                <ChevronUp className="w-3 h-3 text-slate-400 shrink-0 ml-0.5" />
               ) : (
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0 ml-1" />
+                <ChevronDown className="w-3 h-3 text-slate-500 shrink-0 ml-0.5" />
               )}
             </button>
 
@@ -128,18 +128,18 @@ export const CommandBar: React.FC<CommandBarProps> = ({
               <button
                 type="button"
                 onClick={onStopAnalysis}
-                className="h-11 px-6 rounded-full bg-rose-500/20 border border-rose-500/50 hover:bg-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-sm shadow-rose-500/10 shrink-0 whitespace-nowrap"
+                className="h-9 sm:h-[38px] px-4.5 rounded-full bg-rose-500/20 border border-rose-500/50 hover:bg-rose-500/30 text-rose-400 text-xs font-mono font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm shadow-rose-500/10 shrink-0 whitespace-nowrap"
               >
-                <Square className="w-3.5 h-3.5 fill-current animate-pulse shrink-0" />
+                <Square className="w-3 h-3 fill-current animate-pulse shrink-0" />
                 <span>ABORT</span>
               </button>
             ) : (
               <button
                 type="submit"
                 disabled={!ticker.trim()}
-                className="h-11 px-6 sm:px-7 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-500 text-slate-950 font-bold text-xs font-sans tracking-wider flex items-center justify-center gap-2 transition-all duration-150 shadow-md shadow-amber-500/20 active:scale-[0.98] cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-9 sm:h-[38px] px-4.5 sm:px-5 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-500 text-slate-950 font-bold text-xs font-sans tracking-wide flex items-center justify-center gap-1.5 transition-all duration-150 shadow-md shadow-amber-500/20 active:scale-[0.98] cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Sparkles className="w-4 h-4 fill-slate-950 shrink-0" />
+                <Sparkles className="w-3.5 h-3.5 fill-slate-950 shrink-0" />
                 <span>RUN SWARM ANALYSIS</span>
               </button>
             )}
@@ -147,8 +147,8 @@ export const CommandBar: React.FC<CommandBarProps> = ({
         </div>
 
         {/* Quick Ticker Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1 text-xs no-scrollbar">
-          <span className="text-[11px] font-medium text-slate-500 shrink-0 select-none mr-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pt-0.5 pb-0.5 text-xs no-scrollbar">
+          <span className="text-[10px] font-medium text-slate-500 shrink-0 select-none mr-0.5">
             Presets:
           </span>
           {PRESET_TICKERS.map((preset) => (
@@ -157,7 +157,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
               type="button"
               disabled={isAnalyzing}
               onClick={() => setTicker(preset.symbol)}
-              className={`px-3 py-1 rounded-md text-[11px] font-mono tracking-wide transition-all duration-150 shrink-0 cursor-pointer border flex items-center justify-center ${
+              className={`px-2.5 py-0.5 rounded text-[10px] font-mono tracking-wide transition-all duration-150 shrink-0 cursor-pointer border flex items-center justify-center ${
                 ticker === preset.symbol
                   ? "bg-amber-500/25 border-amber-500/80 text-amber-300 font-bold shadow-xs shadow-amber-500/20 ring-1 ring-amber-500/30"
                   : "bg-slate-900/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/40"
