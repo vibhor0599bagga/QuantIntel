@@ -53,7 +53,7 @@ class OpenAIClient(BaseLLMClient):
             llm_kwargs["use_responses_api"] = True
 
         if self.provider == "openrouter" and "max_tokens" not in llm_kwargs:
-            llm_kwargs["max_tokens"] = 6000
+            llm_kwargs["max_tokens"] = 4000
 
         return NormalizedChatOpenAI(**llm_kwargs)
 
