@@ -145,23 +145,42 @@ export default function Home() {
   const handleStopAnalysis = () => {
     console.log("🛑 [QuantIntel API] User clicked ABORT ANALYSIS");
     if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+      try {
+        abortControllerRef.current.abort();
+      } catch (e) {
+        console.warn("AbortController abort warning:", e);
+      }
       abortControllerRef.current = null;
     }
     if (readerRef.current) {
       try {
-        readerRef.current.cancel();
-        readerRef.current = null;
+        readerRef.current.cancel().catch(() => {});
       } catch (e) {
         console.warn("Stream reader cancel warning:", e);
       }
+      readerRef.current = null;
     }
-    setStreamState((prev) => ({
-      ...prev,
+
+    // Reset all analysis reports and stream state back to home state
+    setFundamentalsReport("");
+    setSentimentReport("");
+    setTechnicalReport("");
+    setMacroReport("");
+    setRiskReport("");
+    setFinalRecommendation("");
+    setStreamState({
       isAnalyzing: false,
       currentPhase: 0,
-      logs: [...prev.logs, "[ABORT] Analysis aborted by user."],
-    }));
+      phase1Complete: false,
+      phase2Complete: false,
+      phase3Complete: false,
+      logs: [],
+    });
+
+    // Reload everything and take user to home page
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   const handleRunAnalysis = async (config: AnalysisConfig) => {
@@ -174,10 +193,27 @@ export default function Home() {
       return;
     }
 
+    // 1. Cleanly abort and release any previous stream
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch (_) {}
+      abortControllerRef.current = null;
+    }
+    if (readerRef.current) {
+      try {
+        readerRef.current.cancel().catch(() => {});
+      } catch (_) {}
+      readerRef.current = null;
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setTicker(config.ticker);
     setTradeDate(config.tradeDate);
 
-    // Reset reports
+    // Reset reports and analysis state
     setFundamentalsReport("");
     setSentimentReport("");
     setTechnicalReport("");
@@ -191,13 +227,9 @@ export default function Home() {
       phase1Complete: false,
       phase2Complete: false,
       phase3Complete: false,
+      error: undefined,
       logs: [`[INIT] Target: ${config.ticker} | Trade Date: ${config.tradeDate} | Swarm Active`],
     });
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
 
     try {
       const targetUrl = apiUrl || getApiBaseUrl();
@@ -207,7 +239,7 @@ export default function Home() {
           "Content-Type": "application/json",
           "x-openrouter-api-key": apiKey.trim(),
         },
-        signal: abortControllerRef.current.signal,
+        signal: controller.signal,
         body: JSON.stringify({
           ticker: config.ticker,
           trade_date: config.tradeDate,
@@ -233,8 +265,9 @@ export default function Home() {
       let buffer = "";
 
       while (true) {
+        if (controller.signal.aborted) break;
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done || controller.signal.aborted) break;
 
         buffer += decoder.decode(value, { stream: true });
         const normalized = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -318,7 +351,24 @@ export default function Home() {
         }
       }
     } catch (err: any) {
-      if (err.name === "AbortError") return;
+      const isAbort =
+        controller.signal.aborted ||
+        err.name === "AbortError" ||
+        err.name === "ResponseAborted" ||
+        (typeof err.message === "string" && (
+          err.message.toLowerCase().includes("abort") ||
+          err.message.toLowerCase().includes("cancel")
+        ));
+
+      if (isAbort) {
+        console.log("⏹️ Analysis stream aborted cleanly.");
+        setStreamState((prev) => ({
+          ...prev,
+          isAnalyzing: false,
+        }));
+        return;
+      }
+
       console.error("Stream execution error:", err);
       const isNetworkError =
         err.message?.includes("failed") ||
@@ -334,6 +384,13 @@ export default function Home() {
         error: detailMsg,
         logs: [...prev.logs, `[ERROR] ${detailMsg}`],
       }));
+    } finally {
+      if (readerRef.current) {
+        try {
+          readerRef.current.releaseLock();
+        } catch (_) {}
+        readerRef.current = null;
+      }
     }
   };
 
