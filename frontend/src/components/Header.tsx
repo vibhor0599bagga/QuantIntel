@@ -11,20 +11,22 @@ interface HeaderProps {
 }
 
 const TICKER_DATA = [
-  { symbol: "NIFTY 50", price: "24,852.10", change: "+142.30", pct: "+0.58%", up: true },
+  { symbol: "NIFTY 50", price: "22,250.00", change: "-173.05", pct: "-0.76%", up: false },
   { symbol: "S&P 500", price: "5,648.40", change: "+32.10", pct: "+0.57%", up: true },
   { symbol: "NASDAQ", price: "17,713.78", change: "+114.30", pct: "+0.65%", up: true },
-  { symbol: "NVDA", price: "119.37", change: "+3.42", pct: "+2.95%", up: true },
-  { symbol: "AAPL", price: "224.23", change: "+2.85", pct: "+1.29%", up: true },
-  { symbol: "MSFT", price: "448.90", change: "-1.20", pct: "-0.27%", up: false },
-  { symbol: "GOOGL", price: "178.35", change: "+1.45", pct: "+0.82%", up: true },
-  { symbol: "TSLA", price: "254.80", change: "+8.12", pct: "+3.29%", up: true },
-  { symbol: "BTC/USD", price: "64,280.00", change: "+1,420.00", pct: "+2.26%", up: true },
-  { symbol: "GOLD", price: "2,504.20", change: "+12.80", pct: "+0.51%", up: true },
+  { symbol: "NVDA", price: "230.48", change: "-6.99", pct: "-2.94%", up: false },
+  { symbol: "AAPL", price: "340.42", change: "+3.75", pct: "+1.11%", up: true },
+  { symbol: "MSFT", price: "522.61", change: "-7.15", pct: "-1.35%", up: false },
+  { symbol: "GOOGL", price: "348.29", change: "-2.21", pct: "-0.63%", up: false },
+  { symbol: "TSLA", price: "375.00", change: "-2.81", pct: "-0.74%", up: false },
+  { symbol: "BTC/USD", price: "82,531.11", change: "+838.32", pct: "+1.03%", up: true },
+  { symbol: "GOLD", price: "4,217.30", change: "+15.00", pct: "+0.36%", up: true },
 ];
 
 export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, onOpenKeyModal }) => {
   const [timeStr, setTimeStr] = useState<string>("");
+  const [tickerData, setTickerData] = useState(TICKER_DATA);
+  const [isLive, setIsLive] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -43,6 +45,32 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLiveTickers = async () => {
+      const baseUrl = apiUrl || (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000");
+      try {
+        const res = await fetch(`${baseUrl}/api/market-tickers`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.tickers && json.tickers.length > 0 && isMounted) {
+            setTickerData(json.tickers);
+            setIsLive(json.status === "ok");
+          }
+        }
+      } catch (err) {
+        console.warn("Live market tickers fetch warning:", err);
+      }
+    };
+
+    fetchLiveTickers();
+    const timer = setInterval(fetchLiveTickers, 45000); // refresh every 45s
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [apiUrl]);
 
   return (
     <header className="w-full bg-[#080C14]/90 backdrop-blur-xl border-b border-white/[0.07] sticky top-0 z-40 transition-all">
@@ -128,11 +156,15 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
       {/* Slim Live Market Ticker Tape */}
       <div className="w-full bg-[#05070C] border-t border-b border-white/[0.04] py-1.5 px-4 overflow-hidden relative flex items-center">
         <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 text-slate-400 text-[10px] font-mono font-bold tracking-wider shrink-0 z-10 mr-4 rounded-full">
-          <Activity className="w-3 h-3 text-emerald-400" /> MARKETS
+          <Activity className={`w-3 h-3 ${isLive ? "text-emerald-400 animate-pulse" : "text-amber-400"}`} />
+          <span>MARKETS (T-2)</span>
+          {isLive && (
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-0.5" />
+          )}
         </div>
 
         <div className="animate-marquee flex items-center gap-8 text-xs font-mono select-none">
-          {TICKER_DATA.concat(TICKER_DATA).map((item, idx) => (
+          {tickerData.concat(tickerData).map((item, idx) => (
             <div key={idx} className="flex items-center gap-2 shrink-0">
               <span className="text-slate-300 font-semibold">{item.symbol}</span>
               <span className="text-slate-500 text-[11px]">{item.price}</span>

@@ -12,6 +12,7 @@ import { getTodayDateString } from "@/components/CalendarPicker";
 import {
   Sparkles,
   Layers,
+  Shield,
   ShieldAlert,
   BrainCircuit,
   TrendingUp,
@@ -402,54 +403,60 @@ export default function Home() {
 
         {/* Empty / Welcome State when no analysis has been run yet */}
         {!hasAnalysisData && !streamState.isAnalyzing && (
-          <div className="glass-panel p-8 sm:p-12 mb-8 text-center relative overflow-hidden">
-            <div className="max-w-2xl mx-auto flex flex-col items-center">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-indigo-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-5 shadow-lg shadow-amber-500/10">
-                <Sparkles className="w-7 h-7" />
+          <div className="glass-panel py-12 px-6 sm:py-14 sm:px-8 mb-8 text-center relative overflow-hidden flex flex-col items-center justify-center">
+            <div className="max-w-4xl mx-auto flex flex-col items-center text-center w-full relative z-10">
+              {/* Hero Sparkles Icon Box */}
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-b from-amber-500/15 via-amber-500/5 to-amber-950/20 border border-amber-400/40 flex items-center justify-center text-amber-400 mb-4 shadow-[0_0_26px_rgba(245,158,11,0.22)]">
+                <Sparkles className="w-6 h-6" />
               </div>
 
-              <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">
+              <h2 className="text-2xl sm:text-[26px] font-bold text-white mb-2 text-center tracking-tight">
                 Multi-Agent Quantitative Intelligence
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 max-w-lg mb-8 leading-relaxed">
+              <p className="text-xs sm:text-[13px] text-slate-400 max-w-[490px] mb-8 leading-relaxed text-center">
                 Execute parallel institutional-grade AI agents across fundamentals, macro regimes, technical trends, and tail-risk containment with LangGraph synthesis.
               </p>
 
-              {/* 5 Pillars Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 w-full mb-8">
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
-                  <DollarSign className="w-4 h-4 text-emerald-400 mb-1.5" />
-                  <div className="text-xs font-semibold text-white">1. Valuation</div>
-                  <div className="text-[10px] font-mono text-slate-500">40% Weight</div>
+              {/* 5 Pillars Row Cards (Exact Boxy Landscape Height & Glows) */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5 w-full max-w-[820px] mx-auto">
+                {/* 1. Valuation */}
+                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-emerald-500/60 shadow-[0_0_18px_rgba(16,185,129,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <DollarSign className="w-5 h-5 text-emerald-400 mb-1.5" />
+                  <div className="text-sm font-bold text-white whitespace-nowrap">1. Valuation</div>
+                  <div className="text-xs font-mono text-slate-400 mt-1">40% Weight</div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
-                  <Globe className="w-4 h-4 text-indigo-400 mb-1.5" />
-                  <div className="text-xs font-semibold text-white">2. Macro Regime</div>
-                  <div className="text-[10px] font-mono text-slate-500">20% Weight</div>
+                {/* 2. Macro Regime */}
+                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-indigo-500/60 shadow-[0_0_18px_rgba(99,102,241,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <Globe className="w-5 h-5 text-indigo-400 mb-1.5" />
+                  <div className="text-sm font-bold text-white whitespace-nowrap">2. Macro Regime</div>
+                  <div className="text-xs font-mono text-indigo-300/80 mt-1">20% Weight</div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
-                  <LineChart className="w-4 h-4 text-cyan-400 mb-1.5" />
-                  <div className="text-xs font-semibold text-white">3. Technicals</div>
-                  <div className="text-[10px] font-mono text-slate-500">5% Weight</div>
+                {/* 3. Technicals */}
+                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-cyan-500/60 shadow-[0_0_18px_rgba(6,182,212,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <LineChart className="w-5 h-5 text-cyan-400 mb-1.5" />
+                  <div className="text-sm font-bold text-white whitespace-nowrap">3. Technicals</div>
+                  <div className="text-xs font-mono text-cyan-300/80 mt-1">5% Weight</div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 text-left">
-                  <Newspaper className="w-4 h-4 text-amber-400 mb-1.5" />
-                  <div className="text-xs font-semibold text-white">4. Sentiment</div>
-                  <div className="text-[10px] font-mono text-slate-500">5% Weight</div>
+                {/* 4. Sentiment */}
+                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-amber-500/60 shadow-[0_0_18px_rgba(245,158,11,0.18)] flex flex-col items-center justify-center text-center transition-all hover:scale-[1.02]">
+                  <Newspaper className="w-5 h-5 text-amber-400 mb-1.5" />
+                  <div className="text-sm font-bold text-white whitespace-nowrap">4. Sentiment</div>
+                  <div className="text-xs font-mono text-amber-300/80 mt-1">5% Weight</div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-950/60 border border-rose-500/30 bg-rose-950/10 text-left col-span-2 sm:col-span-1">
-                  <ShieldAlert className="w-4 h-4 text-rose-400 mb-1.5" />
-                  <div className="text-xs font-semibold text-white">5. Risk Guard</div>
-                  <div className="text-[10px] font-mono text-rose-400">30% Weight</div>
+                {/* 5. Risk Guard */}
+                <div className="h-[104px] px-3.5 rounded-2xl bg-[#080d19]/90 border border-rose-500/60 shadow-[0_0_18px_rgba(244,63,94,0.18)] flex flex-col items-center justify-center text-center col-span-2 sm:col-span-1 transition-all hover:scale-[1.02]">
+                  <Shield className="w-5 h-5 text-rose-400 mb-1.5" />
+                  <div className="text-sm font-bold text-white whitespace-nowrap">5. Risk Guard</div>
+                  <div className="text-xs font-mono text-rose-400 mt-1 font-semibold">30% Weight</div>
                 </div>
               </div>
 
-              {/* Quick Launch CTA */}
-              <div className="flex flex-wrap items-center justify-center gap-3">
+              {/* Quick Launch CTA Buttons (Clear Separated Vertical Margin) */}
+              <div className="flex flex-wrap items-center justify-center gap-3.5 mt-7">
                 <button
                   onClick={() =>
                     handleRunAnalysis({
@@ -460,7 +467,7 @@ export default function Home() {
                       sectorExposure: "tech_heavy",
                     })
                   }
-                  className="px-6 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-xs"
+                  className="px-5 py-2 rounded-full bg-[#080d19] hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
                 >
                   <span>Analyze AAPL (Tech Heavy)</span>
                   <ArrowRight className="w-3.5 h-3.5 text-amber-400" />
@@ -476,7 +483,7 @@ export default function Home() {
                       sectorExposure: "tech_heavy",
                     })
                   }
-                  className="px-6 py-2.5 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 hover:text-white text-xs font-semibold flex items-center justify-center gap-2.5 transition-all cursor-pointer shadow-xs"
+                  className="px-5 py-2 rounded-full bg-[#080d19] hover:bg-slate-800/80 border border-slate-800 text-slate-300 hover:text-white text-xs font-medium flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
                 >
                   <span>Analyze NVDA (Growth &amp; AI)</span>
                   <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
@@ -500,7 +507,10 @@ export default function Home() {
 
       {/* Modern Slim Footer */}
       <footer className="w-full bg-[#05070C] border-t border-white/[0.04] py-3.5 px-6 text-center text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-5 h-5 rounded-full bg-slate-900 border border-slate-700/80 flex items-center justify-center text-[10px] font-bold text-slate-300">
+            N
+          </div>
           <span className="font-bold text-slate-400">QUANTINTEL</span>
           <span>© 2026 Institutional Swarm Platform</span>
         </div>

@@ -72,14 +72,13 @@ export const CommandBar: React.FC<CommandBarProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
         {/* Main Search & Controls Row (Unified h-11 / 44px Controls) */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2.5 sm:gap-3">
-          {/* Ticker Search Box (Clean prefix & hero ticker typography) */}
+          {/* Ticker Search Box */}
           <div className="flex-1 min-w-[220px] h-11 flex items-center bg-[#090D16] border border-slate-800/90 rounded-full px-4 sm:px-5 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
-            <div className="flex items-center shrink-0 select-none mr-3">
-              <Search className="w-3.5 h-3.5 text-slate-500 mr-2 shrink-0" />
-              <span className="text-[10px] font-mono font-semibold tracking-wider text-slate-400 uppercase">
+            <div className="flex items-center shrink-0 select-none mr-2">
+              <Search className="w-3.5 h-3.5 text-slate-500 mr-1.5 shrink-0" />
+              <span className="text-[11px] font-mono font-bold tracking-wider text-slate-400 uppercase">
                 TICKER
               </span>
-              <span className="w-px h-3.5 bg-slate-800/90 ml-3" />
             </div>
             <input
               type="text"
@@ -91,7 +90,7 @@ export const CommandBar: React.FC<CommandBarProps> = ({
             />
           </div>
 
-          {/* Quick Date Selector (Compact, unified height and styling) */}
+          {/* Quick Date Selector */}
           <div className="w-full sm:w-[210px] shrink-0">
             <CalendarPicker
               selectedDate={tradeDate}
@@ -138,9 +137,9 @@ export const CommandBar: React.FC<CommandBarProps> = ({
               <button
                 type="submit"
                 disabled={!ticker.trim()}
-                className="h-11 px-6 sm:px-7 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-500 text-slate-950 font-bold text-xs font-sans tracking-wider flex items-center justify-center gap-2.5 transition-all duration-150 shadow-sm shadow-amber-500/20 active:scale-[0.99] cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-11 px-6 sm:px-7 rounded-full bg-amber-500 hover:bg-amber-400 active:bg-amber-500 text-slate-950 font-bold text-xs font-sans tracking-wider flex items-center justify-center gap-2 transition-all duration-150 shadow-md shadow-amber-500/20 active:scale-[0.98] cursor-pointer shrink-0 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Sparkles className="w-3.5 h-3.5 fill-slate-950/20 shrink-0" />
+                <Sparkles className="w-4 h-4 fill-slate-950 shrink-0" />
                 <span>RUN SWARM ANALYSIS</span>
               </button>
             )}
@@ -158,10 +157,10 @@ export const CommandBar: React.FC<CommandBarProps> = ({
               type="button"
               disabled={isAnalyzing}
               onClick={() => setTicker(preset.symbol)}
-              className={`px-4 py-1.5 rounded-full text-xs font-mono tracking-wide transition-all duration-150 shrink-0 cursor-pointer border flex items-center justify-center ${
+              className={`px-3 py-1 rounded-md text-[11px] font-mono tracking-wide transition-all duration-150 shrink-0 cursor-pointer border flex items-center justify-center ${
                 ticker === preset.symbol
-                  ? "bg-amber-500/15 border-amber-500/50 text-amber-300 font-bold shadow-sm shadow-amber-500/10 ring-1 ring-amber-500/20"
-                  : "bg-slate-900/70 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/50"
+                  ? "bg-amber-500/25 border-amber-500/80 text-amber-300 font-bold shadow-xs shadow-amber-500/20 ring-1 ring-amber-500/30"
+                  : "bg-slate-900/60 border-slate-800/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 hover:bg-slate-800/40"
               }`}
             >
               {preset.symbol}

@@ -297,3 +297,81 @@ async def stream_stock_analysis(req: AnalysisRequest, request: Request):
         }
     )
 
+
+SYMBOLS_MAP = [
+    {"display": "NIFTY 50", "yf_symbol": "^NSEI"},
+    {"display": "S&P 500", "yf_symbol": "^GSPC"},
+    {"display": "NASDAQ", "yf_symbol": "^IXIC"},
+    {"display": "NVDA", "yf_symbol": "NVDA"},
+    {"display": "AAPL", "yf_symbol": "AAPL"},
+    {"display": "MSFT", "yf_symbol": "MSFT"},
+    {"display": "GOOGL", "yf_symbol": "GOOGL"},
+    {"display": "TSLA", "yf_symbol": "TSLA"},
+    {"display": "BTC/USD", "yf_symbol": "BTC-USD"},
+    {"display": "GOLD", "yf_symbol": "GC=F"},
+]
+
+@app.get("/api/market-tickers", tags=["Market Data"])
+async def get_market_tickers(trade_date: str = None):
+    """
+    Fetch market prices and daily percentage changes from Yahoo Finance as of 2 days prior to the current reference date.
+    """
+    import yfinance as yf
+    from datetime import datetime, timedelta
+
+    loop = asyncio.get_event_loop()
+    def fetch_tickers():
+        if trade_date:
+            try:
+                ref_dt = datetime.strptime(trade_date, "%Y-%m-%d")
+            except Exception:
+                ref_dt = datetime.now()
+        else:
+            ref_dt = datetime.now()
+
+        # Target date is always 2 days prior to the reference date
+        target_dt = ref_dt - timedelta(days=2)
+        start_str = (target_dt - timedelta(days=7)).strftime("%Y-%m-%d")
+        end_str = (target_dt + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        results = []
+        for item in SYMBOLS_MAP:
+            try:
+                t = yf.Ticker(item["yf_symbol"])
+                df = t.history(start=start_str, end=end_str)
+                if df is not None and len(df) >= 2:
+                    last = float(df["Close"].iloc[-1])
+                    prev = float(df["Close"].iloc[-2])
+                    chg = last - prev
+                    pct = (chg / prev) * 100
+                    results.append({
+                        "symbol": item["display"],
+                        "price": f"{last:,.2f}",
+                        "change": f"{chg:+.2f}",
+                        "pct": f"{pct:+.2f}%",
+                        "up": bool(chg >= 0)
+                    })
+            except Exception:
+                pass
+        return results, target_dt.strftime("%Y-%m-%d")
+
+    try:
+        data, date_str = await loop.run_in_executor(None, fetch_tickers)
+        if data and len(data) > 0:
+            return {"status": "ok", "as_of_date": date_str, "tickers": data}
+    except Exception as e:
+        print("[Market Tickers] Exception:", e)
+
+    return {"status": "fallback", "tickers": [
+        { "symbol": "NIFTY 50", "price": "22,250.00", "change": "-173.05", "pct": "-0.76%", "up": False },
+        { "symbol": "S&P 500", "price": "5,648.40", "change": "+32.10", "pct": "+0.57%", "up": True },
+        { "symbol": "NASDAQ", "price": "17,713.78", "change": "+114.30", "pct": "+0.65%", "up": True },
+        { "symbol": "NVDA", "price": "230.48", "change": "-6.99", "pct": "-2.94%", "up": False },
+        { "symbol": "AAPL", "price": "340.42", "change": "+3.75", "pct": "+1.11%", "up": True },
+        { "symbol": "MSFT", "price": "522.61", "change": "-7.15", "pct": "-1.35%", "up": False },
+        { "symbol": "GOOGL", "price": "348.29", "change": "-2.21", "pct": "-0.63%", "up": False },
+        { "symbol": "TSLA", "price": "375.00", "change": "-2.81", "pct": "-0.74%", "up": False },
+        { "symbol": "BTC/USD", "price": "82,531.11", "change": "+838.32", "pct": "+1.03%", "up": True },
+        { "symbol": "GOLD", "price": "4,217.30", "change": "+15.00", "pct": "+0.36%", "up": True },
+    ]}
+
