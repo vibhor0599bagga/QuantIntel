@@ -102,12 +102,24 @@ class McpQuantIntelGraph:
         print("[PHASE 1] PARALLEL DATA GATHERING (All 4 agents run concurrently)")
         print("="*80)
         
-        # Execute all 4 agents CONCURRENTLY with 150s (2.5 min) timeouts using asyncio.gather()
+        # Execute all 4 agents with max 2 concurrent in-flight requests using Semaphore(2)
+        sem = asyncio.Semaphore(2)
+
+        async def _run_throttled(tool_name: str) -> str:
+            async with sem:
+                return await self._execute_tool_with_timeout(
+                    tool_name,
+                    timeout=150.0,
+                    ticker=ticker,
+                    trade_date=trade_date,
+                    api_key=self.api_key
+                )
+
         tasks = [
-            self._execute_tool_with_timeout("ask_fundamentals_agent", timeout=150.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
-            self._execute_tool_with_timeout("ask_sentiment_agent", timeout=150.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
-            self._execute_tool_with_timeout("ask_technical_agent", timeout=150.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
-            self._execute_tool_with_timeout("ask_macro_agent", timeout=150.0, ticker=ticker, trade_date=trade_date, api_key=self.api_key),
+            _run_throttled("ask_fundamentals_agent"),
+            _run_throttled("ask_sentiment_agent"),
+            _run_throttled("ask_technical_agent"),
+            _run_throttled("ask_macro_agent"),
         ]
         
         fundamentals_report, sentiment_report, technical_report, macro_report = await asyncio.gather(*tasks)

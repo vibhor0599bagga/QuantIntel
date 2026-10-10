@@ -78,8 +78,16 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
       <div className="max-w-[1700px] mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
         {/* Left: Branding & Tagline */}
         <div className="flex items-center gap-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "/";
+            }}
+            className="flex items-center gap-2.5 cursor-pointer group hover:opacity-90 transition-opacity"
+            title="QuantIntel Home"
+          >
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 group-hover:border-amber-500/50 transition-colors">
               <Zap className="w-3.5 h-3.5 fill-amber-400/20" />
             </div>
             <div className="flex items-center gap-2">
@@ -90,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
                 v1.9
               </span>
             </div>
-          </div>
+          </a>
 
           <div className="hidden xl:flex items-center gap-2 pl-3.5 border-l border-slate-800 text-xs text-slate-400">
             <span>Institutional Multi-Agent Intelligence</span>

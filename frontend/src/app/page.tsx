@@ -581,7 +581,17 @@ export default function Home() {
       {/* Slim Footer */}
       <footer className="w-full bg-[#05070C] border-t border-white/[0.06] py-2 px-2 text-xs font-mono text-slate-500 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-slate-400">QUANTINTEL</span>
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = "/";
+            }}
+            className="font-bold text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title="QuantIntel Home"
+          >
+            QUANTINTEL
+          </a>
           <span>© 2026 Institutional Swarm Platform</span>
         </div>
         <div className="flex items-center gap-3 text-[11px] text-slate-500">
