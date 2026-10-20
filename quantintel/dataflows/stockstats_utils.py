@@ -54,6 +54,10 @@ def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     if data is None or data.empty:
         return pd.DataFrame(columns=["Date", "Open", "High", "Low", "Close", "Volume"])
 
+    # Flatten MultiIndex columns if present (from newer yfinance versions)
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = [col[0] if isinstance(col, tuple) else col for col in data.columns]
+
     if "Date" not in data.columns and isinstance(data.index, pd.DatetimeIndex):
         data = data.reset_index()
 

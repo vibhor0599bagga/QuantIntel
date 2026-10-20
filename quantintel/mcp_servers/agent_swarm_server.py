@@ -63,7 +63,13 @@ def _create_runner(agent_key, agent_node, tool_node) -> callable:
         }
         result = await compiled.ainvoke(initial_state)
         # extract the specific report
-        return result.get(f"{agent_key}_report", "No report generated.")
+        report = result.get(f"{agent_key}_report", "")
+        if not report:
+            for m in reversed(result.get("messages", [])):
+                if getattr(m, "content", "") and not getattr(m, "tool_calls", None):
+                    report = m.content
+                    break
+        return report or "No report generated."
     return runner
 
 # Initialize Global config

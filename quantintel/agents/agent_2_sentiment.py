@@ -19,10 +19,18 @@ Tool: get_news(ticker, start_date, end_date)
 
 Steps:
 1. Call get_news for the past 30 days from trade_date.
-2. Call get_news again over the same 30-day window with broader keywords (CEO name, product, sector).
-3. Analyse: overall tone, momentum, event catalysts, analyst opinion, social volume.
-4. Write a detailed sentiment report.
-5. End with EXACTLY this block:
+2. Call get_news again over the same 30-day window with broader keywords (e.g. leadership, earnings, product line, sector).
+3. Write a comprehensive, detailed institutional report (at least 3-4 paragraphs) organized into these sections:
+   ### 1. Market Narrative & Emotional Tone
+   Analyze the prevailing sentiment across headlines, media tone, and investor perception.
+   ### 2. Key Catalysts & News Events
+   Detail specific recent events, earnings releases, leadership updates, or regulatory coverage.
+   ### 3. Retail & Institutional Sentiment Divergence
+   Discuss whether institutional analyst upgrades/downgrades and general retail sentiment align or conflict.
+   ### 4. Forward Sentiment Trajectory
+   Evaluate whether sentiment momentum is deteriorating, stable, or accelerating positively.
+
+4. End your response with EXACTLY this structured block at the very bottom:
 
 SENTIMENT_SCORE: <float -1.0 to +1.0>
 POLARITY: bearish | neutral | bullish

@@ -140,8 +140,10 @@ def _get_stock_stats_bulk(symbol, indicator, curr_date) -> dict:
 
     df = wrap(data)
     df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
-    if indicator in df:
-        df[indicator]  # trigger calculation
+    try:
+        df[indicator]  # trigger stockstats dynamic calculation
+    except Exception as e:
+        pass
 
     result = {}
     for _, row in df.iterrows():

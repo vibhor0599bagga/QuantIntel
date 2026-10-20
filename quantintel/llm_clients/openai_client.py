@@ -5,7 +5,7 @@ from langchain_openai import ChatOpenAI
 from .base_client import BaseLLMClient, normalize_content
 
 _PASSTHROUGH = ("timeout", "max_retries", "reasoning_effort",
-                "api_key", "callbacks", "http_client", "http_async_client")
+                "callbacks", "http_client", "http_async_client")
 
 _PROVIDER_CONFIG = {
     "xai":        ("https://api.x.ai/v1",             "XAI_API_KEY"),
@@ -33,27 +33,29 @@ class OpenAIClient(BaseLLMClient):
             llm_kwargs["base_url"] = base_url
             if self.kwargs.get("api_key"):
                 llm_kwargs["api_key"] = self.kwargs["api_key"]
-            elif api_key_env:
-                api_key = os.environ.get(api_key_env) or os.environ.get("OPENAI_API_KEY") or "placeholder_key"
-                llm_kwargs["api_key"] = api_key
-            else:
+            elif api_key_env and os.environ.get(api_key_env):
+                llm_kwargs["api_key"] = os.environ.get(api_key_env)
+            elif os.environ.get("OPENAI_API_KEY"):
+                llm_kwargs["api_key"] = os.environ.get("OPENAI_API_KEY")
+            elif self.provider == "ollama":
                 llm_kwargs["api_key"] = "ollama"
+            else:
+                llm_kwargs["api_key"] = "placeholder_key"
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
-            llm_kwargs["api_key"] = self.kwargs.get("api_key") or os.environ.get("OPENAI_API_KEY") or "placeholder_key"
+            llm_kwargs["api_key"] = self.kwargs.get("api_key") or os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or "placeholder_key"
         else:
-            llm_kwargs["api_key"] = self.kwargs.get("api_key") or os.environ.get("OPENAI_API_KEY") or "placeholder_key"
-
+            llm_kwargs["api_key"] = self.kwargs.get("api_key") or os.environ.get("OPENAI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or "placeholder_key"
 
         for key in _PASSTHROUGH:
-            if key in self.kwargs:
+            if key in self.kwargs and self.kwargs[key] is not None:
                 llm_kwargs[key] = self.kwargs[key]
 
         if self.provider == "openai":
             llm_kwargs["use_responses_api"] = True
 
         if self.provider == "openrouter" and "max_tokens" not in llm_kwargs:
-            llm_kwargs["max_tokens"] = 4000
+            llm_kwargs["max_tokens"] = 1800
 
         return NormalizedChatOpenAI(**llm_kwargs)
 

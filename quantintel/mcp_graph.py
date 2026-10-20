@@ -1,4 +1,5 @@
 # quantintel/mcp_graph.py
+import os
 import asyncio
 from datetime import datetime
 from langchain_core.messages import HumanMessage
@@ -25,7 +26,13 @@ class McpQuantIntelGraph:
         self.config = {**DEFAULT_CONFIG, **(config or {})}
         set_config(self.config)
 
-        self.api_key = self.config.get("api_key") or self.config.get("openrouter_api_key") or ""
+        self.api_key = (
+            self.config.get("api_key")
+            or self.config.get("openrouter_api_key")
+            or os.environ.get("OPENROUTER_API_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+            or ""
+        )
 
         self.deep_llm = create_llm_client(
             provider = self.config["llm_provider"],
@@ -168,6 +175,9 @@ class McpQuantIntelGraph:
         if not state.get("phase1_complete"):
             return {"risk_report": "ERROR: Phase 1 not completed", "phase2_complete": False}
         
+        # Buffer to allow Phase 1 in-flight requests to settle on OpenRouter
+        await asyncio.sleep(2)
+
         print("\n" + "="*80)
         print("[PHASE 2] RISK SYNTHESIS (Risk agent processes Phase 1 results)")
         print("="*80)
@@ -223,6 +233,9 @@ class McpQuantIntelGraph:
         if not state.get("phase2_complete"):
             return {"final_recommendation": "ERROR: Phase 2 not completed"}
         
+        # Buffer to allow Phase 2 in-flight requests to settle on OpenRouter
+        await asyncio.sleep(2)
+
         ticker = state["ticker"]
         trade_date = state["trade_date"]
         

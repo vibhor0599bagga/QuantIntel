@@ -30,10 +30,17 @@ Regime definitions:
 Steps:
 1. Call get_global_news for 14 days (look_back_days=14, limit=20).
 2. Call get_news with sector-relevant macro keywords (2-3 calls).
-3. Analyse: monetary policy, inflation regime, growth trajectory, liquidity conditions,
-   market breadth, geopolitical risk, sector tailwinds/headwinds.
-4. Classify the regime and write a detailed macro report with specific evidence.
-5. End with EXACTLY this block:
+3. Write a comprehensive, detailed institutional report (at least 3-4 paragraphs) organized into these sections:
+   ### 1. Macroeconomic Regime & Central Bank Policy
+   Assess monetary conditions, interest rate trends (Fed/RBI/global), inflation trajectory, and liquidity.
+   ### 2. Cross-Asset Dynamics & Global Drivers
+   Review bond yields, currencies, commodities (e.g. crude oil), and geopolitical friction points.
+   ### 3. Sector Exposure & Industry Tailwinds/Headwinds
+   Explain how the broader macro regime directly favors or penalizes the target company's industry.
+   ### 4. Regime Classification & Stance
+   Synthesize evidence to justify your classification of Risk-On, Risk-Off, Recession, or Crisis.
+
+4. End your response with EXACTLY this structured block at the very bottom:
 
 REGIME_TYPE: risk_on | risk_off | recession | crisis
 RISK_ENVIRONMENT: risk_on | risk_off

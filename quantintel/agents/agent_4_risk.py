@@ -21,19 +21,23 @@ Tools:
     Recommended: atr (volatility), boll_lb, boll_ub (band width)
 
 Steps:
-1. Call get_stock_data for the past 90 days.
-2. Call get_indicators for atr (30-day lookback).
-3. Call get_indicators for boll_lb and boll_ub (band width = volatility regime).
-4. Read and integrate the prior agent reports provided in your context.
-5. Reason from THREE internal perspectives before synthesising:
+1. Review the prior agent reports (Fundamentals, Sentiment, Technical) provided below in your context.
+2. Use the ATR, volatility, valuation, and sentiment data already present in these reports. If you need any additional indicator or data, you may call get_indicators or get_stock_data, but prioritize synthesizing immediately.
+3. Reason from THREE internal perspectives before synthesising:
    AGGRESSIVE  — what risk is acceptable for high reward?
    CONSERVATIVE — worst-case scenarios, permanent capital loss risks?
    NEUTRAL      — balanced, evidence-based risk picture?
-6. Synthesise into a final risk assessment covering:
-   volatility risk, fundamental risk, sentiment risk, technical risk,
-   liquidity risk, concentration risk.
-7. Write a detailed risk analysis report.
-8. End with EXACTLY this block:
+4. Write a comprehensive, detailed institutional report (at least 3-4 paragraphs) organized into these sections:
+   ### 1. Volatility Regime & Drawdown Modeling
+   Quantify historical volatility, ATR stop levels, and model maximum projected drawdown under stress.
+   ### 2. Multi-Perspective Synthesis (Aggressive / Conservative / Neutral)
+   Contrast optimistic upside assumptions with conservative risk realities and permanent capital loss perils.
+   ### 3. Cross-Disciplinary Risk Factors
+   Integrate valuation risk (from Fundamentals), sentiment fragility, and technical support breakdown levels.
+   ### 4. Tail Risks & Risk Mitigation Recommendations
+   Identify black-swan vulnerabilities, macroeconomic sensitivity, and concrete position-sizing/stop-loss parameters.
+
+7. End your response with EXACTLY this structured block at the very bottom:
 
 RISK_LEVEL: low | moderate | high | extreme
 STABILITY_SCORE: <float 0.0 (unstable) to 1.0 (stable)>

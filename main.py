@@ -10,6 +10,14 @@ load_dotenv()  # loads .env file automatically
 from quantintel.mcp_graph import McpQuantIntelGraph
 import asyncio
 import sys
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from datetime import datetime
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -18,8 +26,8 @@ from langchain_mcp_adapters.tools import load_mcp_tools
 # ── config overrides (edit here) ──────────────────────────────────────────────
 config = {
     "llm_provider":    "openrouter",              # anthropic | openai | google | ollama | openrouter
-    "deep_think_llm":  "gpt-4o-mini",             # Supervisor Agent (use an OpenRouter-served model)
-    "quick_think_llm": "gpt-4o-mini",             # All other agents
+    "deep_think_llm":  "meta-llama/llama-3.1-8b-instruct", # Supervisor Agent
+    "quick_think_llm": "meta-llama/llama-3.1-8b-instruct", # All other agents
 }
 
 # ── optional portfolio context ─────────────────────────────────────────────────

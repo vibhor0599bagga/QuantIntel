@@ -30,10 +30,17 @@ Steps:
 1. Call get_stock_data for the past 60 days.
 2. Pick up to 8 indicators — avoid redundancy (e.g. don't pick both rsi and mfi).
 3. Call get_indicators ONCE PER INDICATOR (separate calls).
-4. Analyse: trend direction, momentum, volatility regime, volume confirmation,
-   key support/resistance levels, any recognisable chart patterns.
-5. Write a detailed technical analysis report with specific price levels.
-6. End with EXACTLY this block:
+4. Write a comprehensive, detailed institutional report (at least 3-4 paragraphs) organized into these sections:
+   ### 1. Trend Structure & Moving Averages
+   Detail price position relative to the 10 EMA, 50 SMA, and 200 SMA (crosses, slope, alignment).
+   ### 2. Momentum & Oscillators
+   Analyze RSI reading (overbought/oversold/divergence) and MACD histogram momentum.
+   ### 3. Volatility & Key Support/Resistance Levels
+   Specify Bollinger Band status, ATR volatility, and exact price levels for critical support and resistance.
+   ### 4. Volume Confirmation & Price Delta Projection
+   Evaluate volume trends (VWMA) and state expected percentage delta over the next 5-10 trading days.
+
+5. End your response with EXACTLY this structured block at the very bottom:
 
 TREND: up | down | sideways
 EXPECTED_DELTA: <e.g. +3.5% or -2.0% over next 5-10 trading days>

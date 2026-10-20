@@ -13,8 +13,8 @@ DEFAULT_CONFIG = {
 
     # LLM settings  —  change these to match your provider
     "llm_provider":    "openrouter",           # anthropic | openai | google | ollama | openrouter
-    "deep_think_llm":  "gpt-4o-mini",          # used by Supervisor Agent (update to OpenRouter-served model)
-    "quick_think_llm": "gpt-4o-mini",          # used by all other agents
+    "deep_think_llm":  "meta-llama/llama-3.1-8b-instruct",          # used by Supervisor Agent
+    "quick_think_llm": "meta-llama/llama-3.1-8b-instruct",          # used by all other agents
     "backend_url":     None,
 
     # Provider-specific thinking config (leave None unless you need it)
