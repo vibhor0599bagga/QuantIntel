@@ -11,22 +11,23 @@ interface HeaderProps {
 }
 
 const TICKER_DATA = [
-  { symbol: "NIFTY 50", price: "22,250.00", change: "-173.05", pct: "-0.76%", up: false },
-  { symbol: "S&P 500", price: "5,648.40", change: "+32.10", pct: "+0.57%", up: true },
-  { symbol: "NASDAQ", price: "17,713.78", change: "+114.30", pct: "+0.65%", up: true },
-  { symbol: "NVDA", price: "230.48", change: "-6.99", pct: "-2.94%", up: false },
-  { symbol: "AAPL", price: "340.42", change: "+3.75", pct: "+1.11%", up: true },
-  { symbol: "MSFT", price: "522.61", change: "-7.15", pct: "-1.35%", up: false },
-  { symbol: "GOOGL", price: "348.29", change: "-2.21", pct: "-0.63%", up: false },
-  { symbol: "TSLA", price: "375.00", change: "-2.81", pct: "-0.74%", up: false },
-  { symbol: "BTC/USD", price: "82,531.11", change: "+838.32", pct: "+1.03%", up: true },
-  { symbol: "GOLD", price: "4,217.30", change: "+15.00", pct: "+0.36%", up: true },
+  { symbol: "NIFTY 50", price: "25,291.10", change: "+146.80", pct: "+0.58%", up: true },
+  { symbol: "S&P 500", price: "7,485.98", change: "-75.69", pct: "-1.00%", up: false },
+  { symbol: "NASDAQ", price: "24,760.30", change: "-375.97", pct: "-1.50%", up: false },
+  { symbol: "NVDA", price: "159.13", change: "-3.72", pct: "-2.28%", up: false },
+  { symbol: "AAPL", price: "355.36", change: "-0.91", pct: "-0.26%", up: false },
+  { symbol: "MSFT", price: "525.80", change: "+1.92", pct: "+0.37%", up: true },
+  { symbol: "GOOGL", price: "288.95", change: "-6.82", pct: "-2.31%", up: false },
+  { symbol: "TSLA", price: "382.32", change: "-7.90", pct: "-2.03%", up: false },
+  { symbol: "BTC/USD", price: "64,497.21", change: "-807.85", pct: "-1.24%", up: false },
+  { symbol: "GOLD", price: "3,865.90", change: "-20.40", pct: "-0.52%", up: false },
 ];
 
 export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, onOpenKeyModal }) => {
   const [timeStr, setTimeStr] = useState<string>("");
   const [tickerData, setTickerData] = useState(TICKER_DATA);
   const [isLive, setIsLive] = useState(false);
+  const [asOfDate, setAsOfDate] = useState<string>("");
 
   useEffect(() => {
     const updateTime = () => {
@@ -57,6 +58,9 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
           if (json.tickers && json.tickers.length > 0 && isMounted) {
             setTickerData(json.tickers);
             setIsLive(json.status === "ok");
+            if (json.as_of_date) {
+              setAsOfDate(json.as_of_date);
+            }
           }
         }
       } catch (err) {
@@ -166,7 +170,7 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
       <div className="w-full bg-[#05070C] border-t border-b border-white/[0.04] py-1.5 px-4 overflow-hidden relative flex items-center">
         <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-900 border border-slate-800 text-slate-400 text-[10px] font-mono font-bold tracking-wider shrink-0 z-10 mr-4 rounded-full">
           <Activity className={`w-3 h-3 ${isLive ? "text-emerald-400 animate-pulse" : "text-amber-400"}`} />
-          <span>MARKETS (T-2)</span>
+          <span>MARKET CLOSE {asOfDate ? `(${asOfDate})` : ""}</span>
           {isLive && (
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-0.5" />
           )}
