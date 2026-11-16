@@ -243,32 +243,38 @@ export default function Home() {
   const abortControllerRef = useRef<AbortController | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
 
-  // Health check on mount
+  // Health check on mount with periodic wake-up detection
   useEffect(() => {
+    let isMounted = true;
+    let timer: NodeJS.Timeout | null = null;
+
     const checkHealth = async () => {
       const targetUrl = getApiBaseUrl();
       try {
         const res = await fetch(`${targetUrl}/health`);
         if (res.ok) {
           const data = await res.json();
-          console.log("🌐 [QuantIntel API] Live Health Status:", data);
-          if (data.status === "ok") {
+          if (data.status === "ok" && isMounted) {
             setApiStatus("connected");
             if (data.server_date) {
               setTradeDate(data.server_date);
             }
-          } else {
-            setApiStatus("offline");
+            return;
           }
-        } else {
-          setApiStatus("offline");
         }
+        if (isMounted) setApiStatus("offline");
       } catch (err) {
-        console.warn("API Health Check Warning:", err);
-        setApiStatus("offline");
+        if (isMounted) setApiStatus("offline");
       }
     };
+
     checkHealth();
+    timer = setInterval(checkHealth, 15000);
+
+    return () => {
+      isMounted = false;
+      if (timer) clearInterval(timer);
+    };
   }, []);
 
   const handleStopAnalysis = () => {
@@ -362,28 +368,67 @@ export default function Home() {
 
     try {
       const targetUrl = apiUrl || getApiBaseUrl();
-      const response = await fetch(`${targetUrl}/api/analyze/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-openrouter-api-key": apiKey.trim(),
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          ticker: config.ticker,
-          trade_date: config.tradeDate,
-          openrouter_api_key: apiKey.trim(),
-          portfolio_context: {
-            sector_exposure: config.sectorExposure,
-            horizon: config.horizon,
-            risk_tolerance: config.riskTolerance,
-            holdings: [],
-          },
-        }),
-      });
+      let response: Response | null = null;
+      let attempt = 0;
+      const maxAttempts = 3;
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          if (attempt > 1) {
+            setStreamState((prev) => ({
+              ...prev,
+              logs: [
+                ...prev.logs,
+                `[CONNECTION] Waking up backend container (Attempt ${attempt}/${maxAttempts})... Handshake in progress...`,
+              ],
+            }));
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+
+          response = await fetch(`${targetUrl}/api/analyze/stream`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-openrouter-api-key": apiKey.trim(),
+            },
+            signal: controller.signal,
+            body: JSON.stringify({
+              ticker: config.ticker,
+              trade_date: config.tradeDate,
+              openrouter_api_key: apiKey.trim(),
+              portfolio_context: {
+                sector_exposure: config.sectorExposure,
+                horizon: config.horizon,
+                risk_tolerance: config.riskTolerance,
+                holdings: [],
+              },
+            }),
+          });
+
+          if (response.ok) {
+            break;
+          } else {
+            const errText = await response.text().catch(() => "");
+            throw new Error(`HTTP ${response.status}: ${errText || response.statusText}`);
+          }
+        } catch (fetchErr: any) {
+          if (controller.signal.aborted) throw fetchErr;
+          const isNetErr =
+            fetchErr.message?.includes("failed") ||
+            fetchErr.message?.includes("NetworkError") ||
+            fetchErr.message?.includes("network error") ||
+            fetchErr.name === "TypeError";
+          if (isNetErr && attempt < maxAttempts) {
+            console.warn(`[QuantIntel] Connection attempt ${attempt} failed, retrying...`, fetchErr);
+            continue;
+          }
+          throw fetchErr;
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error("Failed to establish stream connection with QuantIntel backend.");
       }
 
       const reader = response.body?.getReader();

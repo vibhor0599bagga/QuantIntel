@@ -49,7 +49,7 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
   useEffect(() => {
     let isMounted = true;
     const fetchLiveTickers = async () => {
-      const baseUrl = apiUrl || (process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000");
+      const baseUrl = apiUrl || process.env.NEXT_PUBLIC_API_URL || "https://quantintel.onrender.com";
       try {
         const res = await fetch(`${baseUrl}/api/market-tickers`);
         if (res.ok) {
@@ -60,7 +60,8 @@ export const Header: React.FC<HeaderProps> = ({ apiStatus, apiUrl, hasApiKey, on
           }
         }
       } catch (err) {
-        console.warn("Live market tickers fetch warning:", err);
+        // Silently preserve pre-set ticker values if backend is cold-starting
+        console.debug("Live market tickers connecting:", err);
       }
     };
 
