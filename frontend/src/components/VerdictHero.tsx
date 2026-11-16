@@ -10,6 +10,84 @@ interface VerdictHeroProps {
   recommendationText: string;
 }
 
+// Robust parser to extract exact stance & conviction level from recommendation text
+export const parseVerdictStance = (
+  text: string
+): { stance: "BUY" | "SELL" | "HOLD"; conviction: string | null } => {
+  if (!text) return { stance: "HOLD", conviction: null };
+
+  const clean = text.trim();
+
+  // Extract conviction (e.g. "**Conviction Level:** 0.8" or "CONVICTION: 0.85")
+  const convictionMatch = clean.match(/CONVICTION\s*(?:LEVEL)?\s*[:*]*\s*([0-9\.]+)/i);
+  const conviction = convictionMatch ? convictionMatch[1] : null;
+
+  // 1. Look for explicit machine-readable verdict tag
+  const explicitMatch = clean.match(/(?:FINAL_VERDICT|FINAL\s+RECOMMENDATION|VERDICT)\s*[:*]*\s*(BUY|HOLD|SELL)\b/i);
+  if (explicitMatch) {
+    return {
+      stance: explicitMatch[1].toUpperCase() as "BUY" | "SELL" | "HOLD",
+      conviction,
+    };
+  }
+
+  // 2. Look for the Decision section (e.g. "**BUY/HOLD/SELL DECISION:**\n\nI recommend a **HOLD** stance")
+  const decisionSectionMatch = clean.match(
+    /(?:BUY\/HOLD\/SELL\s+DECISION|CLEAR\s+(?:BUY\/HOLD\/SELL\s+)?DECISION|DECISION\s*:)\s*\*?:?\*?\s*([\s\S]{1,400}?)(?=\n\s*\*\*|\n\s*###|\n\s*Top\s+\d|\n\s*Rationale|\n\s*Conviction|$)/i
+  );
+
+  if (decisionSectionMatch) {
+    const sectionText = decisionSectionMatch[1].trim();
+
+    // Check for bold standalone verdict: e.g. **HOLD** or **BUY** or **SELL** on its own line
+    const boldStandalone = sectionText.match(/(?:^|\n|\s)\*\*(BUY|HOLD|SELL)\*\*(?:$|\n|\s|\.)/i);
+    if (boldStandalone) {
+      return {
+        stance: boldStandalone[1].toUpperCase() as "BUY" | "SELL" | "HOLD",
+        conviction,
+      };
+    }
+
+    // Check for recommendation verb: e.g. "recommend a **HOLD** stance" or "recommend a HOLD stance"
+    const recVerb = sectionText.match(/recommend(?:s|ed|ing)?\s+(?:a\s+)?(?:\*\*)?(BUY|HOLD|SELL)(?:\*\*)?(?:\s+stance|\s+decision|\s+rating)?/i);
+    if (recVerb) {
+      return {
+        stance: recVerb[1].toUpperCase() as "BUY" | "SELL" | "HOLD",
+        conviction,
+      };
+    }
+
+    // Check for simple standalone word in section
+    const simpleWord = sectionText.match(/\b(BUY|HOLD|SELL)\b/i);
+    if (simpleWord) {
+      return {
+        stance: simpleWord[1].toUpperCase() as "BUY" | "SELL" | "HOLD",
+        conviction,
+      };
+    }
+  }
+
+  // 3. Document-wide search for explicit recommendation statement
+  const docRecMatch = clean.match(/recommend(?:s|ed|ing)?\s+(?:a\s+)?(?:\*\*)?(BUY|HOLD|SELL)(?:\*\*)?(?:\s+stance|\s+decision|\s+rating)?/i);
+  if (docRecMatch) {
+    return {
+      stance: docRecMatch[1].toUpperCase() as "BUY" | "SELL" | "HOLD",
+      conviction,
+    };
+  }
+
+  // 4. Standalone bold verdict line anywhere in the markdown
+  const standaloneLine = clean.match(/^\s*\*\*(BUY|HOLD|SELL)\*\*\s*$/im);
+  if (standaloneLine) {
+    return {
+      stance: standaloneLine[1].toUpperCase() as "BUY" | "SELL" | "HOLD",
+      conviction,
+    };
+  }
+
+  return { stance: "HOLD", conviction };
+};
+
 export const VerdictHero: React.FC<VerdictHeroProps> = ({
   ticker,
   tradeDate,
@@ -17,18 +95,8 @@ export const VerdictHero: React.FC<VerdictHeroProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  // Parsing logic for stance & conviction
-  const upperText = (recommendationText || "").toUpperCase();
-  let stance: "BUY" | "SELL" | "HOLD" = "HOLD";
-  if (upperText.includes("BUY") && !upperText.includes("DO NOT BUY")) {
-    stance = "BUY";
-  } else if (upperText.includes("SELL")) {
-    stance = "SELL";
-  }
-
-  // Extract conviction if available
-  const convictionMatch = upperText.match(/CONVICTION\s*(?:LEVEL)?:\s*([0-9\.]+)/i);
-  const conviction = convictionMatch ? convictionMatch[1] : null;
+  // Precision stance & conviction parsing
+  const { stance, conviction } = parseVerdictStance(recommendationText);
 
   useEffect(() => {
     if (recommendationText && stance === "BUY") {

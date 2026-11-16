@@ -331,6 +331,10 @@ Provide your FINAL RECOMMENDATION with:
 3. Clear BUY/HOLD/SELL decision
 4. Conviction level (0.0-1.0)
 5. Top 2-3 risks to monitor
+
+End your response with EXACTLY this structured tag block at the very bottom:
+FINAL_VERDICT: BUY | HOLD | SELL
+CONVICTION: <float 0.0-1.0>
 """
         
         messages = [HumanMessage(content=synthesis_prompt)] + state.get("messages", [])
