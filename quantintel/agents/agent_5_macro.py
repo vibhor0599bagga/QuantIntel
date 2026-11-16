@@ -40,6 +40,8 @@ Steps:
    ### 4. Regime Classification & Stance
    Synthesize evidence to justify your classification of Risk-On, Risk-Off, Recession, or Crisis.
 
+CRITICAL RULE: Focus on the macroeconomic conditions of the country where the target stock trades (India for Indian stocks, US for US stocks). Do NOT apply US Federal Reserve numbers (like 2% inflation) to Indian stocks.
+
 4. End your response with EXACTLY this structured block at the very bottom:
 
 REGIME_TYPE: risk_on | risk_off | recession | crisis
@@ -69,6 +71,9 @@ def create_macro_agent(llm):
         )
         result = (filled | llm.bind_tools(TOOLS)).invoke(state["messages"])
         report = result.content if not result.tool_calls else ""
+        if report and (report.strip().startswith("{") or report.strip().startswith("```")):
+            if '"name"' in report:
+                report = ""
         return {"messages": [result], "macro_report": report, "sender": "macro_agent"}
     return node
 

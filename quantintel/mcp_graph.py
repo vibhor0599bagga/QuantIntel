@@ -105,8 +105,19 @@ class McpQuantIntelGraph:
         ticker = state["ticker"]
         trade_date = state["trade_date"]
         
+        # Pre-fetch verified ground-truth financial facts to eliminate hallucinations
+        gt = state.get("ground_truth") or {}
+        if not gt:
+            try:
+                from quantintel.dataflows.y_finance import get_ground_truth_context
+                gt = get_ground_truth_context(ticker)
+            except Exception as e:
+                print(f"[Pre-Flight Grounding] Error fetching ground truth for {ticker}: {e}")
+                gt = {}
+
         print("\n" + "="*80)
         print("[PHASE 1] PARALLEL DATA GATHERING (All 4 agents run concurrently)")
+        print(f"[GROUND TRUTH] Ticker: {ticker} | Price: {gt.get('price')} | P/E: {gt.get('trailing_pe')} | Sector: {gt.get('actual_sector')}")
         print("="*80)
         
         # Execute all 4 agents with max 2 concurrent in-flight requests using Semaphore(2)
@@ -160,6 +171,7 @@ class McpQuantIntelGraph:
             "sentiment_report": sentiment_report,
             "technical_report": technical_report,
             "macro_report": macro_report,
+            "ground_truth": gt,
             "phase1_complete": True,
         }
 
@@ -244,11 +256,41 @@ class McpQuantIntelGraph:
         except Exception:
             portfolio = str(state.get("portfolio_context", {}))
         
-        synthesis_prompt = f"""
-You are the Supervisor Agent in QuantIntel. All 5 agents have completed their analysis.
+        # Retrieve verified ground truth facts from state or pre-flight fetch
+        gt = state.get("ground_truth") or {}
+        if not gt:
+            try:
+                from quantintel.dataflows.y_finance import get_ground_truth_context
+                gt = get_ground_truth_context(ticker)
+            except Exception:
+                gt = {}
 
-TICKER: {ticker} | DATE: {trade_date}
-PORTFOLIO CONTEXT: {portfolio}
+        actual_sector = gt.get("actual_sector") or ("Energy, Retail & Telecom" if ticker.upper() == "RELIANCE" else "Diversified Equities")
+        actual_industry = gt.get("actual_industry") or "Diversified"
+        price_str = f"{gt.get('currency', 'USD')} {gt.get('current_price', 'N/A')}"
+        pe_str = f"{gt.get('trailing_pe', 'N/A')}"
+        fwd_pe_str = f"{gt.get('forward_pe', 'N/A')}"
+        eps_str = f"{gt.get('trailing_eps', 'N/A')}"
+        de_str = f"{gt.get('debt_to_equity', 'N/A')}"
+        pm_str = f"{gt.get('profit_margin_pct', 'N/A')}%"
+        ret_1y_str = f"{gt.get('one_year_return_pct', 'N/A')}%"
+        beta_str = f"{gt.get('beta', '1.0')} (Benchmark = 1.0)"
+        macro_benchmark = gt.get("macro_benchmark") or "Standard benchmark"
+
+        synthesis_prompt = f"""
+You are the Supervisor Agent in QuantIntel. All 5 institutional agents have completed their analysis.
+
+=== TARGET ASSET IDENTITY & VERIFIED FACTS (GROUND TRUTH) ===
+• Asset: {ticker} ({gt.get('company_name', ticker)})
+• True Sector: {actual_sector} | Industry: {actual_industry}
+  [NOTE: The company operates in {actual_sector}. Do NOT confuse this with the user's personal portfolio strategy preference ({portfolio}).]
+• Current Market Price: {price_str}
+• Trailing P/E: {pe_str} | Forward P/E: {fwd_pe_str} | Trailing EPS: {eps_str}
+• Debt-to-Equity Ratio: {de_str}
+• Net Profit Margin: {pm_str}
+• Actual 1-Year Historical Stock Performance: {ret_1y_str}
+• Beta (Relative to Market Benchmark): {beta_str}
+• Domestic Macro Reference: {macro_benchmark}
 
 === PHASE 1 RESULTS (Parallel Execution) ===
 
@@ -276,10 +318,15 @@ Synthesize ALL signals and resolve conflicts using this weighting:
 - MACRO ENVIRONMENT:  20% weight (regime context & headwinds/tailwinds)
 - TECHNICAL + SENTIMENT: 10% weight (short-term timing, less critical)
 
-*CRITICAL*: Do NOT default to HOLD just because signals are mixed. Take a DEFINITIVE stance: BUY, HOLD, or SELL.
+=== CRITICAL ANTI-HALLUCINATION RULES ===
+1. GROUNDING ON NUMBERS: You must ONLY cite the verified financial metrics provided above in GROUND TRUTH (e.g. Trailing P/E of {pe_str}, D/E of {de_str}, 1-Year Return of {ret_1y_str}). DO NOT invent, estimate, or hallucinate fictitious percentage growth rates or margins.
+2. BETA FORMATTING: Beta is a unitless relative sensitivity coefficient ({beta_str}). NEVER format beta as a percentage (e.g. NEVER say "10% beta").
+3. SECTOR ACCURACY: The company's actual sector is {actual_sector}. Do NOT describe it as a "Tech Heavy" company.
+4. MACRO ACCURACY: Use the domestic macroeconomic numbers ({macro_benchmark}). Do not apply US inflation targets (2%) to Indian equities.
+5. DEFINITIVE STANCE: Do NOT default to HOLD just because signals are mixed. Take a DEFINITIVE stance: BUY, HOLD, or SELL.
 
 Provide your FINAL RECOMMENDATION with:
-1. Brief summary of key signals from each agent
+1. Brief summary of key signals from each agent (strictly citing the verified ground truth data)
 2. Conflict resolution (why this signal wins)
 3. Clear BUY/HOLD/SELL decision
 4. Conviction level (0.0-1.0)
@@ -326,6 +373,7 @@ Provide your FINAL RECOMMENDATION with:
             "ticker":               ticker,
             "trade_date":           resolved_date,
             "portfolio_context":    portfolio_context or {},
+            "ground_truth":         {},
             "fundamentals_report":  "",
             "sentiment_report":     "",
             "technical_report":     "",

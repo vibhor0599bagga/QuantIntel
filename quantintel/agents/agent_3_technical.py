@@ -40,6 +40,8 @@ Steps:
    ### 4. Volume Confirmation & Price Delta Projection
    Evaluate volume trends (VWMA) and state expected percentage delta over the next 5-10 trading days.
 
+CRITICAL RULE: Base your trend and price level analysis strictly on real historical price action from the tools. Do not claim positive appreciation if historical performance has been negative.
+
 5. End your response with EXACTLY this structured block at the very bottom:
 
 TREND: up | down | sideways
@@ -67,6 +69,9 @@ def create_technical_agent(llm):
         )
         result = (filled | llm.bind_tools(TOOLS)).invoke(state["messages"])
         report = result.content if not result.tool_calls else ""
+        if report and (report.strip().startswith("{") or report.strip().startswith("```")):
+            if '"name"' in report:
+                report = ""
         return {"messages": [result], "technical_report": report, "sender": "technical_agent"}
     return node
 

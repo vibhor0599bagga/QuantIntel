@@ -180,7 +180,6 @@ export const AgentGrid: React.FC<AgentGridProps> = ({
   };
 
   const hasAnyReport = AGENTS.some((a) => !!a.report);
-  if (!hasAnyReport) return null;
 
   return (
     <div className="w-full mb-8">

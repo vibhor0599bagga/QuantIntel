@@ -30,6 +30,17 @@ def _should_continue(agent_key: str):
         last = state["messages"][-1]
         if hasattr(last, "tool_calls") and last.tool_calls:
             return f"tools_{agent_key}"
+
+        # Robust fallback: inspect raw content for tool calls if model returned JSON text
+        content = getattr(last, "content", "")
+        if isinstance(content, str) and '"name"' in content and ('"parameters"' in content or '"args"' in content or '"arguments"' in content):
+            from quantintel.llm_clients.base_client import extract_raw_tool_calls
+            recovered = extract_raw_tool_calls(content)
+            if recovered:
+                last.tool_calls = recovered
+                last.content = ""
+                return f"tools_{agent_key}"
+
         return END
     return router
 
@@ -64,11 +75,17 @@ def _create_runner(agent_key, agent_node, tool_node) -> callable:
         result = await compiled.ainvoke(initial_state)
         # extract the specific report
         report = result.get(f"{agent_key}_report", "")
+        if report and report.strip().startswith("{") and '"name"' in report and ('"parameters"' in report or '"args"' in report):
+            report = ""
+
         if not report:
             for m in reversed(result.get("messages", [])):
-                if getattr(m, "content", "") and not getattr(m, "tool_calls", None):
-                    report = m.content
-                    break
+                content = getattr(m, "content", "")
+                if content and not getattr(m, "tool_calls", None):
+                    trimmed = content.strip()
+                    if not (trimmed.startswith("{") and '"name"' in trimmed and ('"parameters"' in trimmed or '"args"' in trimmed)):
+                        report = content
+                        break
         return report or "No report generated."
     return runner
 

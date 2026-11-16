@@ -237,6 +237,7 @@ async def stream_stock_analysis(req: AnalysisRequest, request: Request):
             "ticker": req.ticker.upper(),
             "trade_date": trade_date,
             "portfolio_context": portfolio_dict,
+            "ground_truth": {},
             "fundamentals_report": "",
             "sentiment_report": "",
             "technical_report": "",
@@ -374,4 +375,46 @@ async def get_market_tickers(trade_date: str = None):
         { "symbol": "BTC/USD", "price": "82,531.11", "change": "+838.32", "pct": "+1.03%", "up": True },
         { "symbol": "GOLD", "price": "4,217.30", "change": "+15.00", "pct": "+0.36%", "up": True },
     ]}
+
+
+@app.get("/api/tickers/search", tags=["Market Data"])
+async def search_tickers(q: str = ""):
+    """
+    Search for stock recommendations by symbol or company name (similar to city search in weather apps).
+    Supports US, Indian (NSE/BSE), and global equities with fuzzy matching.
+    """
+    query = (q or "").strip()
+    if not query:
+        return {"status": "ok", "results": []}
+
+    loop = asyncio.get_event_loop()
+
+    def do_search():
+        try:
+            import yfinance as yf
+            s = yf.Search(query, max_results=10)
+            quotes = getattr(s, "quotes", []) or []
+            results = []
+            for item in quotes:
+                sym = item.get("symbol")
+                if not sym or "=" in sym:
+                    continue
+                name = item.get("shortname") or item.get("longname") or sym
+                exchange = item.get("exchDisp") or item.get("exchange") or "GLOBAL"
+                is_indian = sym.endswith(".NS") or sym.endswith(".BO")
+                results.append({
+                    "symbol": sym,
+                    "name": name,
+                    "exchange": exchange,
+                    "country": "IN" if is_indian else "US",
+                    "sector": item.get("sector") or item.get("quoteType") or "Equity"
+                })
+            return results
+        except Exception as err:
+            print("[Ticker Search API] Search error:", err)
+            return []
+
+    results = await loop.run_in_executor(None, do_search)
+    return {"status": "ok", "query": query, "results": results}
+
 

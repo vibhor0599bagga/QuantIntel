@@ -7,6 +7,7 @@ class QuantIntelState(MessagesState):
     ticker:               Annotated[str,  "Stock ticker"]
     trade_date:           Annotated[str,  "Analysis date yyyy-mm-dd"]
     portfolio_context:    Annotated[dict, "User portfolio context (optional)"]
+    ground_truth:         Annotated[dict, "Verified factual financial baseline"]
     fundamentals_report:  Annotated[str,  "Fundamentals agent output"]
     sentiment_report:     Annotated[str,  "Sentiment agent output"]
     technical_report:     Annotated[str,  "Technical agent output"]

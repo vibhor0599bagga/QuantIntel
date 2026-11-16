@@ -38,6 +38,8 @@ Steps:
    ### 4. Valuation Thesis & Strategic Outlook
    Explain the core drivers of your valuation stance.
 
+CRITICAL RULE: You must ONLY cite real numbers retrieved from the tools. Never invent or hallucinate percentage growths, margins, or debt ratios out of thin air.
+
 4. End your response with EXACTLY this structured block at the very bottom:
 
 VALUATION_SIGNAL: undervalued | fair | overvalued
@@ -63,6 +65,9 @@ def create_fundamentals_agent(llm):
         )
         result = (filled | llm.bind_tools(TOOLS)).invoke(state["messages"])
         report = result.content if not result.tool_calls else ""
+        if report and (report.strip().startswith("{") or report.strip().startswith("```")):
+            if '"name"' in report:
+                report = ""
         return {"messages": [result], "fundamentals_report": report, "sender": "fundamentals_agent"}
     return node
 

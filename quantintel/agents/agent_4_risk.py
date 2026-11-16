@@ -37,6 +37,8 @@ Steps:
    ### 4. Tail Risks & Risk Mitigation Recommendations
    Identify black-swan vulnerabilities, macroeconomic sensitivity, and concrete position-sizing/stop-loss parameters.
 
+CRITICAL RULE: Beta is a unitless relative sensitivity benchmark (where Benchmark = 1.0). NEVER express beta as a percentage (e.g. do NOT say "10% beta"). Cite only real volatility and ATR data.
+
 7. End your response with EXACTLY this structured block at the very bottom:
 
 RISK_LEVEL: low | moderate | high | extreme
@@ -72,6 +74,9 @@ def create_risk_agent(llm):
         )
         result = (filled | llm.bind_tools(TOOLS)).invoke(state["messages"])
         report = result.content if not result.tool_calls else ""
+        if report and (report.strip().startswith("{") or report.strip().startswith("```")):
+            if '"name"' in report:
+                report = ""
         return {"messages": [result], "risk_report": report, "sender": "risk_agent"}
     return node
 

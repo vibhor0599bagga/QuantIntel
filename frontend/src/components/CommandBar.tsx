@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Play, Square, Sliders, Sparkles, ChevronDown, ChevronUp, Layers, Target, Shield, Search } from "lucide-react";
 import { CalendarPicker, getTodayDateString } from "@/components/CalendarPicker";
+import { StockSearchInput } from "@/components/StockSearchInput";
 
 export interface AnalysisConfig {
   ticker: string;
@@ -72,23 +73,24 @@ export const CommandBar: React.FC<CommandBarProps> = ({
       <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
         {/* Main Search & Controls Row (Compact Proportional Controls) */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 sm:gap-2.5">
-          {/* Ticker Search Box */}
-          <div className="flex-1 min-w-[200px] h-9 sm:h-[38px] flex items-center bg-[#090D16] border border-slate-800/90 rounded-full px-3.5 sm:px-4 focus-within:border-amber-500/50 focus-within:ring-1 focus-within:ring-amber-500/30 transition-all">
-            <div className="flex items-center shrink-0 select-none mr-2">
-              <Search className="w-3 h-3 text-slate-500 mr-1.5 shrink-0" />
-              <span className="text-[10px] font-mono font-bold tracking-wider text-slate-400 uppercase">
-                TICKER
-              </span>
-            </div>
-            <input
-              type="text"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              placeholder="e.g. AAPL, NVDA, HDFCBANK"
-              disabled={isAnalyzing}
-              className="w-full bg-transparent text-white font-mono font-bold text-xs sm:text-[13px] tracking-wide focus:outline-none uppercase placeholder:text-slate-600 placeholder:font-normal placeholder:tracking-normal placeholder:text-xs"
-            />
-          </div>
+          {/* Ticker Search Box with Live Recommendations */}
+          <StockSearchInput
+            value={ticker}
+            onChange={setTicker}
+            onSubmit={() => {
+              if (ticker.trim()) {
+                onRunAnalysis({
+                  ticker: ticker.trim().toUpperCase(),
+                  tradeDate,
+                  riskTolerance,
+                  horizon,
+                  sectorExposure,
+                });
+              }
+            }}
+            disabled={isAnalyzing}
+            placeholder="e.g. AAPL, NVDA, HDFCBANK, Apple..."
+          />
 
           {/* Quick Date Selector */}
           <div className="w-full sm:w-[195px] shrink-0">

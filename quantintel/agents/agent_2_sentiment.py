@@ -30,6 +30,8 @@ Steps:
    ### 4. Forward Sentiment Trajectory
    Evaluate whether sentiment momentum is deteriorating, stable, or accelerating positively.
 
+CRITICAL RULE: Base your narrative on actual news headlines and event developments returned by the tools. Do not invent arbitrary statistical percentages (e.g. "70% positive coverage") unless explicitly supported by source data.
+
 4. End your response with EXACTLY this structured block at the very bottom:
 
 SENTIMENT_SCORE: <float -1.0 to +1.0>
@@ -56,6 +58,9 @@ def create_sentiment_agent(llm):
         )
         result = (filled | llm.bind_tools(TOOLS)).invoke(state["messages"])
         report = result.content if not result.tool_calls else ""
+        if report and (report.strip().startswith("{") or report.strip().startswith("```")):
+            if '"name"' in report:
+                report = ""
         return {"messages": [result], "sentiment_report": report, "sender": "sentiment_agent"}
     return node
 
