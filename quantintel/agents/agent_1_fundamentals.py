@@ -38,7 +38,10 @@ Steps:
    ### 4. Valuation Thesis & Strategic Outlook
    Explain the core drivers of your valuation stance.
 
-CRITICAL RULE: You must ONLY cite real numbers retrieved from the tools. Never invent or hallucinate percentage growths, margins, or debt ratios out of thin air.
+CRITICAL ANTI-HALLUCINATION RULES:
+1. You must ONLY cite real numbers retrieved from the tools or the VERIFIED GROUND TRUTH block provided in the user message. Never invent or hallucinate percentage growths, margins, or debt ratios.
+2. If the VERIFIED GROUND TRUTH block is present, your report MUST match those exact numbers. If your tool output conflicts with ground truth, prefer the GROUND TRUTH values as they are sourced directly from Yahoo Finance.
+3. Cross-check every number you write: P/E, margins, ROE, D/E, revenue growth. If the ground truth says Operating Margin is 66% do NOT write 21%.
 
 4. End your response with EXACTLY this structured block at the very bottom:
 

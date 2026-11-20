@@ -59,8 +59,41 @@ def _create_runner(agent_key, agent_node, tool_node) -> callable:
     compiled = wf.compile()
     
     async def runner(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "") -> str:
+        # Pre-fetch ground truth so agents have verified data to anchor against
+        gt_context = ""
+        try:
+            from quantintel.dataflows.y_finance import get_ground_truth_context
+            gt = get_ground_truth_context(ticker)
+            if gt:
+                def _fmt(v):
+                    if v is None:
+                        return "N/A"
+                    if isinstance(v, (int, float)) and abs(v) > 1e6:
+                        return f"${v/1e9:,.2f}B"
+                    return str(v)
+                gt_context = (
+                    f"\n=== VERIFIED GROUND TRUTH (Yahoo Finance — use these numbers, do NOT invent your own) ===\n"
+                    f"Company: {gt.get('company_name', ticker)} | Sector: {gt.get('actual_sector', 'N/A')} | Industry: {gt.get('actual_industry', 'N/A')}\n"
+                    f"Current Price: {gt.get('currency', 'USD')} {gt.get('current_price', 'N/A')} | Market Cap: {_fmt(gt.get('market_cap'))}\n"
+                    f"Trailing P/E: {gt.get('trailing_pe', 'N/A')} | Forward P/E: {gt.get('forward_pe', 'N/A')} | PEG: {gt.get('peg_ratio', 'N/A')} | P/B: {gt.get('price_to_book', 'N/A')}\n"
+                    f"EPS (TTM): {gt.get('trailing_eps', 'N/A')} | Forward EPS: {gt.get('forward_eps', 'N/A')} | Book Value/Share: {gt.get('book_value', 'N/A')}\n"
+                    f"Gross Margin: {gt.get('gross_margin_pct', 'N/A')}% | Operating Margin: {gt.get('operating_margin_pct', 'N/A')}% | Net Margin: {gt.get('profit_margin_pct', 'N/A')}%\n"
+                    f"ROE: {gt.get('roe_pct', 'N/A')}% | ROA: {gt.get('roa_pct', 'N/A')}%\n"
+                    f"Debt/Equity: {gt.get('debt_to_equity', 'N/A')} | Current Ratio: {gt.get('current_ratio', 'N/A')}\n"
+                    f"Total Cash: {_fmt(gt.get('total_cash'))} | Total Debt: {_fmt(gt.get('total_debt'))} | FCF: {_fmt(gt.get('free_cashflow'))} | FCF Margin: {gt.get('fcf_margin_pct', 'N/A')}%\n"
+                    f"Revenue (TTM): {_fmt(gt.get('total_revenue'))} | Revenue Growth YoY: {gt.get('revenue_growth_yoy_pct', 'N/A')}% | Earnings Growth: {gt.get('earnings_growth_pct', 'N/A')}%\n"
+                    f"Beta: {gt.get('beta', 'N/A')} | 52W High: {gt.get('fifty_two_week_high', 'N/A')} | 52W Low: {gt.get('fifty_two_week_low', 'N/A')}\n"
+                    f"1-Year Return: {gt.get('one_year_return_pct', 'N/A')}% | Dividend Yield: {gt.get('dividend_yield_pct', 'N/A')}%\n"
+                    f"=== END GROUND TRUTH ===\n"
+                )
+        except Exception as e:
+            print(f"[Ground Truth] Warning: Could not fetch for {ticker}: {e}")
+            gt_context = ""
+
+        initial_msg = f"Analyse {ticker}" + gt_context
+
         initial_state = {
-            "messages":             [HumanMessage(content=f"Analyse {ticker}")],
+            "messages":             [HumanMessage(content=initial_msg)],
             "ticker":               ticker,
             "trade_date":           trade_date,
             "portfolio_context":    {},

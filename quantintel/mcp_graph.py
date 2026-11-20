@@ -117,7 +117,7 @@ class McpQuantIntelGraph:
 
         print("\n" + "="*80)
         print("[PHASE 1] PARALLEL DATA GATHERING (All 4 agents run concurrently)")
-        print(f"[GROUND TRUTH] Ticker: {ticker} | Price: {gt.get('price')} | P/E: {gt.get('trailing_pe')} | Sector: {gt.get('actual_sector')}")
+        print(f"[GROUND TRUTH] Ticker: {ticker} | Price: {gt.get('current_price')} | P/E: {gt.get('trailing_pe')} | P/B: {gt.get('price_to_book')} | ROE: {gt.get('roe_pct')}% | Op Margin: {gt.get('operating_margin_pct')}% | Sector: {gt.get('actual_sector')}")
         print("="*80)
 
         # Synchronize user portfolio context from dashboard to MCP server
@@ -323,9 +323,22 @@ class McpQuantIntelGraph:
         eps_str = f"{gt.get('trailing_eps', 'N/A')}"
         de_str = f"{gt.get('debt_to_equity', 'N/A')}"
         pm_str = f"{gt.get('profit_margin_pct', 'N/A')}%"
+        opm_str = f"{gt.get('operating_margin_pct', 'N/A')}%"
+        gm_str = f"{gt.get('gross_margin_pct', 'N/A')}%"
+        roe_str = f"{gt.get('roe_pct', 'N/A')}%"
+        pb_str = f"{gt.get('price_to_book', 'N/A')}"
+        peg_str = f"{gt.get('peg_ratio', 'N/A')}"
+        rev_growth_str = f"{gt.get('revenue_growth_yoy_pct', 'N/A')}%"
         ret_1y_str = f"{gt.get('one_year_return_pct', 'N/A')}%"
         beta_str = f"{gt.get('beta', '1.0')} (Benchmark = 1.0)"
         macro_benchmark = gt.get("macro_benchmark") or "Standard benchmark"
+
+        def _fmt_b(val):
+            if val is None:
+                return "N/A"
+            if isinstance(val, (int, float)) and abs(val) > 1e6:
+                return f"${val/1e9:,.2f}B"
+            return str(val)
 
         synthesis_prompt = f"""
 You are the Supervisor Agent in QuantIntel. All 5 institutional agents have completed their analysis.
@@ -335,9 +348,13 @@ You are the Supervisor Agent in QuantIntel. All 5 institutional agents have comp
 • True Sector: {actual_sector} | Industry: {actual_industry}
   [NOTE: The company operates in {actual_sector}. Do NOT confuse this with the user's personal portfolio strategy preference ({user_sector_bias}).]
 • Current Market Price: {price_str}
-• Trailing P/E: {pe_str} | Forward P/E: {fwd_pe_str} | Trailing EPS: {eps_str}
-• Debt-to-Equity Ratio: {de_str}
-• Net Profit Margin: {pm_str}
+• Trailing P/E: {pe_str} | Forward P/E: {fwd_pe_str} | PEG: {peg_str} | P/B: {pb_str}
+• Trailing EPS: {eps_str}
+• Gross Margin: {gm_str} | Operating Margin: {opm_str} | Net Profit Margin: {pm_str}
+• ROE: {roe_str}
+• Debt-to-Equity Ratio: {de_str} | Total Cash: {_fmt_b(gt.get('total_cash'))} | Total Debt: {_fmt_b(gt.get('total_debt'))}
+• Revenue (TTM): {_fmt_b(gt.get('total_revenue'))} | Revenue Growth YoY: {rev_growth_str}
+• Free Cash Flow: {_fmt_b(gt.get('free_cashflow'))} | FCF Margin: {gt.get('fcf_margin_pct', 'N/A')}%
 • Actual 1-Year Historical Stock Performance: {ret_1y_str}
 • Beta (Relative to Market Benchmark): {beta_str}
 • Domestic Macro Reference: {macro_benchmark}
@@ -382,11 +399,12 @@ Synthesize ALL signals and resolve conflicts using this weighting:
 - TECHNICAL + SENTIMENT: 10% weight (short-term timing, less critical)
 
 === CRITICAL ANTI-HALLUCINATION RULES ===
-1. GROUNDING ON NUMBERS: You must ONLY cite the verified financial metrics provided above in GROUND TRUTH (e.g. Trailing P/E of {pe_str}, D/E of {de_str}, 1-Year Return of {ret_1y_str}). DO NOT invent, estimate, or hallucinate fictitious percentage growth rates or margins.
+1. GROUNDING ON NUMBERS: You must ONLY cite the verified financial metrics provided above in GROUND TRUTH (e.g. Trailing P/E of {pe_str}, P/B of {pb_str}, Operating Margin of {opm_str}, ROE of {roe_str}, Revenue Growth of {rev_growth_str}, D/E of {de_str}, 1-Year Return of {ret_1y_str}). DO NOT invent, estimate, or hallucinate fictitious percentage growth rates or margins.
 2. BETA FORMATTING: Beta is a unitless relative sensitivity coefficient ({beta_str}). NEVER format beta as a percentage (e.g. NEVER say "10% beta").
 3. SECTOR ACCURACY: The company's actual sector is {actual_sector}. Do NOT describe it as a "{user_sector_bias}" company.
 4. MACRO ACCURACY: Use the domestic macroeconomic numbers ({macro_benchmark}). Do not apply US inflation targets (2%) to Indian equities.
 5. DEFINITIVE STANCE: Do NOT default to HOLD just because signals are mixed. Take a DEFINITIVE stance: BUY, HOLD, or SELL.
+6. CROSS-CHECK: If any agent report contradicts the GROUND TRUTH numbers above, override with the GROUND TRUTH values.
 
 Provide your FINAL RECOMMENDATION with:
 1. Brief summary of key signals from each agent (strictly citing the verified ground truth data)

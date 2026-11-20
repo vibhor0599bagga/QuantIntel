@@ -254,8 +254,12 @@ def get_insider_transactions(ticker):
 
 def get_ground_truth_context(ticker: str) -> dict:
     """
-    Retrieve pre-flight verified financial facts to anchor all LLM agents
+    Retrieve pre-flight verified financial facts to anchor ALL LLM agents
     and completely eliminate statistical hallucinations.
+
+    Returns an expanded dict with valuation multiples, margins, balance sheet
+    metrics, and growth rates so every agent (not just the supervisor) can
+    cross-check its output against hard Yahoo Finance data.
     """
     clean_ticker = resolve_symbol(ticker)
     is_indian = clean_ticker.endswith(".NS") or clean_ticker.endswith(".BO") or clean_ticker in (
@@ -282,15 +286,46 @@ def get_ground_truth_context(ticker: str) -> dict:
         ret_1y = None
         cur_price = info.get("currentPrice") or info.get("regularMarketPrice")
 
-    # Format numbers cleanly
+    # --- Core valuation multiples ---
     pe_ttm = round(float(info.get("trailingPE")), 2) if info.get("trailingPE") else None
     fwd_pe = round(float(info.get("forwardPE")), 2) if info.get("forwardPE") else None
+    peg    = round(float(info.get("pegRatio")), 2) if info.get("pegRatio") else None
+    pb     = round(float(info.get("priceToBook")), 2) if info.get("priceToBook") else None
     eps_ttm = round(float(info.get("trailingEps")), 2) if info.get("trailingEps") else None
+    fwd_eps = round(float(info.get("forwardEps")), 2) if info.get("forwardEps") else None
+    book_value = round(float(info.get("bookValue")), 2) if info.get("bookValue") else None
+
+    # --- Market data ---
     mcap = info.get("marketCap")
-    de_ratio = round(float(info.get("debtToEquity")) / 100.0, 2) if info.get("debtToEquity") else None
-    pm = round(float(info.get("profitMargins")) * 100, 2) if info.get("profitMargins") else None
-    opm = round(float(info.get("operatingMargins")) * 100, 2) if info.get("operatingMargins") else None
     beta_val = round(float(info.get("beta")), 2) if info.get("beta") else 1.0
+    high_52w = info.get("fiftyTwoWeekHigh")
+    low_52w = info.get("fiftyTwoWeekLow")
+    div_yield = round(float(info.get("dividendYield")) * 100, 2) if info.get("dividendYield") else None
+
+    # --- Margin & profitability ---
+    gross_margin_pct = round(float(info.get("grossMargins")) * 100, 2) if info.get("grossMargins") else None
+    opm = round(float(info.get("operatingMargins")) * 100, 2) if info.get("operatingMargins") else None
+    pm = round(float(info.get("profitMargins")) * 100, 2) if info.get("profitMargins") else None
+    roe = round(float(info.get("returnOnEquity")) * 100, 2) if info.get("returnOnEquity") else None
+    roa = round(float(info.get("returnOnAssets")) * 100, 2) if info.get("returnOnAssets") else None
+
+    # --- Balance sheet ---
+    de_ratio_raw = info.get("debtToEquity")
+    de_ratio = round(float(de_ratio_raw) / 100.0, 2) if de_ratio_raw else None
+    current_ratio = round(float(info.get("currentRatio")), 2) if info.get("currentRatio") else None
+    total_cash = info.get("totalCash")
+    total_debt = info.get("totalDebt")
+    fcf = info.get("freeCashflow")
+    op_cashflow = info.get("operatingCashflow")
+    total_revenue = info.get("totalRevenue")
+    ebitda = info.get("ebitda")
+
+    # --- Growth ---
+    rev_growth_yoy = round(float(info.get("revenueGrowth")) * 100, 2) if info.get("revenueGrowth") else None
+    earnings_growth = round(float(info.get("earningsGrowth")) * 100, 2) if info.get("earningsGrowth") else None
+
+    # Derived: FCF margin
+    fcf_margin = round(fcf / total_revenue * 100, 2) if fcf and total_revenue and total_revenue > 0 else None
 
     macro_text = (
         "Economy: India | Central Bank: Reserve Bank of India (RBI) | Policy Repo Rate: 6.50% | "
@@ -308,14 +343,40 @@ def get_ground_truth_context(ticker: str) -> dict:
         "actual_industry": info.get("industry") or ("Oil & Gas Refining, Retail & Telecom" if ticker.upper() == "RELIANCE" else "Equities"),
         "currency": "INR" if is_indian else info.get("currency", "USD"),
         "current_price": cur_price,
+        # Valuation
         "trailing_pe": pe_ttm,
         "forward_pe": fwd_pe,
+        "peg_ratio": peg,
+        "price_to_book": pb,
         "trailing_eps": eps_ttm,
+        "forward_eps": fwd_eps,
+        "book_value": book_value,
+        # Market
         "market_cap": mcap,
-        "debt_to_equity": de_ratio,
-        "profit_margin_pct": pm,
-        "operating_margin_pct": opm,
         "beta": beta_val,
+        "fifty_two_week_high": high_52w,
+        "fifty_two_week_low": low_52w,
+        "dividend_yield_pct": div_yield,
+        # Margins & profitability
+        "gross_margin_pct": gross_margin_pct,
+        "operating_margin_pct": opm,
+        "profit_margin_pct": pm,
+        "roe_pct": roe,
+        "roa_pct": roa,
+        # Balance sheet
+        "debt_to_equity": de_ratio,
+        "current_ratio": current_ratio,
+        "total_cash": total_cash,
+        "total_debt": total_debt,
+        "free_cashflow": fcf,
+        "operating_cashflow": op_cashflow,
+        "total_revenue": total_revenue,
+        "ebitda": ebitda,
+        # Growth
+        "revenue_growth_yoy_pct": rev_growth_yoy,
+        "earnings_growth_pct": earnings_growth,
+        "fcf_margin_pct": fcf_margin,
+        # Context
         "one_year_return_pct": ret_1y,
         "is_indian": is_indian,
         "macro_benchmark": macro_text,
