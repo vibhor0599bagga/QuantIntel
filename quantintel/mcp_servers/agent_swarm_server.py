@@ -58,39 +58,101 @@ def _create_runner(agent_key, agent_node, tool_node) -> callable:
     wf.add_edge(f"tools_{agent_key}", f"agent_{agent_key}")
     compiled = wf.compile()
     
-    async def runner(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "") -> str:
+    async def runner(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "", ground_truth: str = "") -> str:
         # Pre-fetch ground truth so agents have verified data to anchor against
         gt_context = ""
         try:
-            from quantintel.dataflows.y_finance import get_ground_truth_context
-            gt = get_ground_truth_context(ticker)
-            if gt:
+            gt = None
+            if ground_truth:
+                try:
+                    import json
+                    gt = json.loads(ground_truth) if isinstance(ground_truth, str) else ground_truth
+                except Exception:
+                    pass
+
+            if not gt:
+                from quantintel.dataflows.y_finance import get_ground_truth_context
+                gt = get_ground_truth_context(ticker)
+
+            if gt and isinstance(gt, dict):
                 def _fmt(v):
                     if v is None:
-                        return "N/A"
+                        return None
                     if isinstance(v, (int, float)) and abs(v) > 1e6:
                         return f"${v/1e9:,.2f}B"
                     return str(v)
-                gt_context = (
-                    f"\n=== VERIFIED GROUND TRUTH (Yahoo Finance — use these numbers, do NOT invent your own) ===\n"
-                    f"Company: {gt.get('company_name', ticker)} | Sector: {gt.get('actual_sector', 'N/A')} | Industry: {gt.get('actual_industry', 'N/A')}\n"
-                    f"Current Price: {gt.get('currency', 'USD')} {gt.get('current_price', 'N/A')} | Market Cap: {_fmt(gt.get('market_cap'))}\n"
-                    f"Trailing P/E: {gt.get('trailing_pe', 'N/A')} | Forward P/E: {gt.get('forward_pe', 'N/A')} | PEG: {gt.get('peg_ratio', 'N/A')} | P/B: {gt.get('price_to_book', 'N/A')}\n"
-                    f"EPS (TTM): {gt.get('trailing_eps', 'N/A')} | Forward EPS: {gt.get('forward_eps', 'N/A')} | Book Value/Share: {gt.get('book_value', 'N/A')}\n"
-                    f"Gross Margin: {gt.get('gross_margin_pct', 'N/A')}% | Operating Margin: {gt.get('operating_margin_pct', 'N/A')}% | Net Margin: {gt.get('profit_margin_pct', 'N/A')}%\n"
-                    f"ROE: {gt.get('roe_pct', 'N/A')}% | ROA: {gt.get('roa_pct', 'N/A')}%\n"
-                    f"Debt/Equity: {gt.get('debt_to_equity', 'N/A')} | Current Ratio: {gt.get('current_ratio', 'N/A')}\n"
-                    f"Total Cash: {_fmt(gt.get('total_cash'))} | Total Debt: {_fmt(gt.get('total_debt'))} | FCF: {_fmt(gt.get('free_cashflow'))} | FCF Margin: {gt.get('fcf_margin_pct', 'N/A')}%\n"
-                    f"Revenue (TTM): {_fmt(gt.get('total_revenue'))} | Revenue Growth YoY: {gt.get('revenue_growth_yoy_pct', 'N/A')}% | Earnings Growth: {gt.get('earnings_growth_pct', 'N/A')}%\n"
-                    f"Beta: {gt.get('beta', 'N/A')} | 52W High: {gt.get('fifty_two_week_high', 'N/A')} | 52W Low: {gt.get('fifty_two_week_low', 'N/A')}\n"
-                    f"1-Year Return: {gt.get('one_year_return_pct', 'N/A')}% | Dividend Yield: {gt.get('dividend_yield_pct', 'N/A')}%\n"
-                    f"=== END GROUND TRUTH ===\n"
-                )
+
+                lines = []
+                comp_name = gt.get('company_name', ticker)
+                sector = gt.get('actual_sector')
+                industry = gt.get('actual_industry')
+                if sector and industry:
+                    lines.append(f"• Company: {comp_name} ({ticker}) | Sector: {sector} | Industry: {industry}")
+
+                cur_p = gt.get('current_price')
+                mcap = _fmt(gt.get('market_cap'))
+                if cur_p:
+                    lines.append(f"• Current Market Price: {gt.get('currency', 'USD')} {cur_p}" + (f" | Market Cap: {mcap}" if mcap else ""))
+
+                # Valuation multiples (only include non-null values)
+                mults = []
+                if gt.get('trailing_pe'): mults.append(f"Trailing P/E: {gt.get('trailing_pe')}x")
+                if gt.get('forward_pe'): mults.append(f"Forward P/E: {gt.get('forward_pe')}x")
+                if gt.get('peg_ratio'): mults.append(f"PEG: {gt.get('peg_ratio')}")
+                if gt.get('price_to_book'): mults.append(f"P/B: {gt.get('price_to_book')}x")
+                if gt.get('trailing_eps'): mults.append(f"EPS (TTM): ${gt.get('trailing_eps')}")
+                if gt.get('forward_eps'): mults.append(f"Forward EPS: ${gt.get('forward_eps')}")
+                if mults: lines.append("• Valuation Multiples: " + " | ".join(mults))
+
+                # Margins & profitability
+                margs = []
+                if gt.get('gross_margin_pct'): margs.append(f"Gross Margin: {gt.get('gross_margin_pct')}%")
+                if gt.get('operating_margin_pct'): margs.append(f"Operating Margin: {gt.get('operating_margin_pct')}%")
+                if gt.get('profit_margin_pct'): margs.append(f"Net Margin: {gt.get('profit_margin_pct')}%")
+                if gt.get('roe_pct'): margs.append(f"ROE: {gt.get('roe_pct')}%")
+                if gt.get('roa_pct'): margs.append(f"ROA: {gt.get('roa_pct')}%")
+                if margs: lines.append("• Margins & Profitability: " + " | ".join(margs))
+
+                # Balance sheet & cash
+                bs_items = []
+                if gt.get('debt_to_equity') is not None: bs_items.append(f"Debt-to-Equity: {gt.get('debt_to_equity')}x")
+                if gt.get('current_ratio'): bs_items.append(f"Current Ratio: {gt.get('current_ratio')}")
+                if gt.get('total_cash'): bs_items.append(f"Total Cash: {_fmt(gt.get('total_cash'))}")
+                if gt.get('total_debt'): bs_items.append(f"Total Debt: {_fmt(gt.get('total_debt'))}")
+                if gt.get('free_cashflow'): bs_items.append(f"Free Cash Flow: {_fmt(gt.get('free_cashflow'))}")
+                if gt.get('fcf_margin_pct'): bs_items.append(f"FCF Margin: {gt.get('fcf_margin_pct')}%")
+                if bs_items: lines.append("• Balance Sheet & Cash Quality: " + " | ".join(bs_items))
+
+                # Scale & growth
+                grow_items = []
+                if gt.get('total_revenue'): grow_items.append(f"Revenue (TTM): {_fmt(gt.get('total_revenue'))}")
+                if gt.get('revenue_growth_yoy_pct'): grow_items.append(f"Revenue Growth YoY: {gt.get('revenue_growth_yoy_pct')}%")
+                if gt.get('earnings_growth_pct'): grow_items.append(f"Earnings Growth: {gt.get('earnings_growth_pct')}%")
+                if grow_items: lines.append("• Revenue & Growth: " + " | ".join(grow_items))
+
+                # Risk & 52W levels
+                risk_items = []
+                if gt.get('beta'): risk_items.append(f"Beta: {gt.get('beta')}")
+                if gt.get('fifty_two_week_high'): risk_items.append(f"52W High: ${gt.get('fifty_two_week_high')}")
+                if gt.get('fifty_two_week_low'): risk_items.append(f"52W Low: ${gt.get('fifty_two_week_low')}")
+                if gt.get('one_year_return_pct') is not None: risk_items.append(f"1-Yr Stock Return: {gt.get('one_year_return_pct')}%")
+                if risk_items: lines.append("• Market Benchmarks: " + " | ".join(risk_items))
+
+                if lines:
+                    gt_context = (
+                        "\n=== VERIFIED INSTITUTIONAL GROUND TRUTH (Yahoo Finance) ===\n"
+                        + "\n".join(lines)
+                        + "\n=== END GROUND TRUTH ===\n"
+                    )
         except Exception as e:
             print(f"[Ground Truth] Warning: Could not fetch for {ticker}: {e}")
             gt_context = ""
 
-        initial_msg = f"Analyse {ticker}" + gt_context
+        initial_msg = (
+            f"Perform an exhaustive, institutional-grade equity research analysis of {ticker} as of trading date {trade_date}."
+            f"\nDeliver a detailed multi-paragraph report (at least 600-900 words) across all required sections. Do NOT write brief single-sentence summaries or refusal lines."
+            + gt_context
+        )
 
         initial_state = {
             "messages":             [HumanMessage(content=initial_msg)],
@@ -159,45 +221,45 @@ def _get_runner(agent_key: str, api_key: str = ""):
 mcp = FastMCP("QuantIntel Swarm Agents")
 
 @mcp.tool()
-async def ask_fundamentals_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
+async def ask_fundamentals_agent(ticker: str, trade_date: str, api_key: str = "", ground_truth: str = "") -> str:
     """Call this agent to perform a deep-dive fundamental analysis of a company. 
     It evaluates core financial metrics including P/E ratios, profit margins, debt-to-equity ratios, and free cash flow. 
     Returns a comprehensive valuation report indicating whether the stock is overvalued, undervalued, or fairly priced, along with a firm BUY/HOLD/SELL fundamental signal."""
     runner = _get_runner("fundamentals", api_key)
-    return await runner(ticker, trade_date)
+    return await runner(ticker, trade_date, ground_truth=ground_truth)
 
 @mcp.tool()
-async def ask_sentiment_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
+async def ask_sentiment_agent(ticker: str, trade_date: str, api_key: str = "", ground_truth: str = "") -> str:
     """Call this agent to analyze recent news, market narratives, and media sentiment surrounding the stock. 
     It processes recent headlines and articles to gauge public and institutional perception. 
     Returns a detailed sentiment report summarizing key news catalysts, the overarching narrative, and a bullish/bearish/neutral sentiment score."""
     runner = _get_runner("sentiment", api_key)
-    return await runner(ticker, trade_date)
+    return await runner(ticker, trade_date, ground_truth=ground_truth)
 
 @mcp.tool()
-async def ask_technical_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
+async def ask_technical_agent(ticker: str, trade_date: str, api_key: str = "", ground_truth: str = "") -> str:
     """Call this agent to perform technical price-action and momentum analysis on the stock. 
     It evaluates price data, moving averages, relative strength, and momentum oscillators. 
     Returns a technical analysis report detailing current trend direction, key support/resistance levels, and short-to-medium term trading signals."""
     runner = _get_runner("technical", api_key)
-    return await runner(ticker, trade_date)
+    return await runner(ticker, trade_date, ground_truth=ground_truth)
 
 @mcp.tool()
-async def ask_risk_agent(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "", api_key: str = "") -> str:
+async def ask_risk_agent(ticker: str, trade_date: str, fundamentals_report: str = "", sentiment_report: str = "", technical_report: str = "", api_key: str = "", ground_truth: str = "") -> str:
     """Call this agent to quantify the downside risk and volatility profile of the stock. 
     It calculates key risk metrics such as Average True Range (ATR), beta, Value at Risk (VaR), and historical drawdowns.
     IMPORTANT: Provide the fundamentals, sentiment, and technical reports generated by the other agents so the Risk agent can synthesize them.
     Returns a comprehensive risk report outputting the quantified risk level (low/moderate/high) and an assessment of potential downside exposure."""
     runner = _get_runner("risk", api_key)
-    return await runner(ticker, trade_date, fundamentals_report, sentiment_report, technical_report)
+    return await runner(ticker, trade_date, fundamentals_report, sentiment_report, technical_report, ground_truth=ground_truth)
 
 @mcp.tool()
-async def ask_macro_agent(ticker: str, trade_date: str, api_key: str = "") -> str:
+async def ask_macro_agent(ticker: str, trade_date: str, api_key: str = "", ground_truth: str = "") -> str:
     """Call this agent to analyze the broader macroeconomic environment and monetary policy context. 
     It evaluates Federal Reserve regimes, interest rate directions, inflation dynamics, and broader market conditions. 
     Returns a macro regime report (e.g., Risk-On vs. Risk-Off), assessing how current economic headwinds or tailwinds impact the market and the specific stock."""
     runner = _get_runner("macro", api_key)
-    return await runner(ticker, trade_date)
+    return await runner(ticker, trade_date, ground_truth=ground_truth)
 
 # Dynamic in-memory user portfolio profile (updated at runtime from dashboard)
 _active_user_portfolio = {

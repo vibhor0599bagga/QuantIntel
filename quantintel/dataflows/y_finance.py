@@ -286,25 +286,57 @@ def get_insider_transactions(ticker):
         return f"Error retrieving insider transactions for {ticker}: {e}"
 
 
+# In-memory ground-truth cache to prevent concurrent rate-limiting from Yahoo Finance
+_GROUND_TRUTH_CACHE = {}
+_GROUND_TRUTH_CACHE_TTL = 600  # 10 minutes cache
+
 def get_ground_truth_context(ticker: str) -> dict:
     """
     Retrieve pre-flight verified financial facts to anchor ALL LLM agents
     and completely eliminate statistical hallucinations.
 
-    Returns an expanded dict with valuation multiples, margins, balance sheet
-    metrics, and growth rates so every agent (not just the supervisor) can
-    cross-check its output against hard Yahoo Finance data.
+    Uses an in-memory cache to prevent multiple parallel agents from hammering
+    Yahoo Finance concurrently. Includes robust fallbacks using fast_info,
+    financials, and balance_sheet when quote-summary info fails on cloud IPs.
     """
     clean_ticker = resolve_symbol(ticker)
+    cache_key = clean_ticker.upper()
+    now_ts = datetime.now().timestamp()
+
+    if cache_key in _GROUND_TRUTH_CACHE:
+        cached_entry = _GROUND_TRUTH_CACHE[cache_key]
+        if now_ts - cached_entry["cached_at"] < _GROUND_TRUTH_CACHE_TTL:
+            return cached_entry["data"]
+
     is_indian = clean_ticker.endswith(".NS") or clean_ticker.endswith(".BO") or clean_ticker in (
         "RELIANCE", "HDFCBANK", "TCS", "INFY", "ICICIBANK", "SBIN", "TATAMOTORS"
     )
 
+    t = yf.Ticker(clean_ticker)
     try:
-        t = yf.Ticker(clean_ticker)
         info = yf_retry(lambda: t.info) or {}
     except Exception:
         info = {}
+
+    # Fast info fallback for price, market cap, and 52W range
+    cur_price = info.get("currentPrice") or info.get("regularMarketPrice")
+    mcap = info.get("marketCap")
+    high_52w = info.get("fiftyTwoWeekHigh")
+    low_52w = info.get("fiftyTwoWeekLow")
+
+    try:
+        fi = t.fast_info
+        if fi:
+            if not cur_price and getattr(fi, "last_price", None):
+                cur_price = round(float(fi.last_price), 2)
+            if not mcap and getattr(fi, "market_cap", None):
+                mcap = fi.market_cap
+            if not high_52w and getattr(fi, "year_high", None):
+                high_52w = round(float(fi.year_high), 2)
+            if not low_52w and getattr(fi, "year_low", None):
+                low_52w = round(float(fi.year_low), 2)
+    except Exception:
+        pass
 
     try:
         hist = yf_retry(lambda: t.history(period="1y"))
@@ -312,15 +344,26 @@ def get_ground_truth_context(ticker: str) -> dict:
             p_start = float(hist["Close"].iloc[0])
             p_end = float(hist["Close"].iloc[-1])
             ret_1y = round(((p_end - p_start) / p_start) * 100, 2)
-            cur_price = round(p_end, 2)
+            if not cur_price:
+                cur_price = round(p_end, 2)
         else:
             ret_1y = None
-            cur_price = info.get("currentPrice") or info.get("regularMarketPrice")
     except Exception:
         ret_1y = None
-        cur_price = info.get("currentPrice") or info.get("regularMarketPrice")
 
-    # --- Core valuation multiples ---
+    # --- Financial statement fallbacks for margins and balance sheet ---
+    inc = None
+    bs = None
+    try:
+        inc = yf_retry(lambda: t.financials)
+    except Exception:
+        pass
+    try:
+        bs = yf_retry(lambda: t.balance_sheet)
+    except Exception:
+        pass
+
+    # Core valuation multiples
     pe_ttm = round(float(info.get("trailingPE")), 2) if info.get("trailingPE") else None
     fwd_pe = round(float(info.get("forwardPE")), 2) if info.get("forwardPE") else None
     peg    = round(float(info.get("pegRatio")), 2) if info.get("pegRatio") else None
@@ -329,11 +372,8 @@ def get_ground_truth_context(ticker: str) -> dict:
     fwd_eps = round(float(info.get("forwardEps")), 2) if info.get("forwardEps") else None
     book_value = round(float(info.get("bookValue")), 2) if info.get("bookValue") else None
 
-    # --- Market data ---
-    mcap = info.get("marketCap")
+    # Market data
     beta_val = round(float(info.get("beta")), 2) if info.get("beta") else 1.0
-    high_52w = info.get("fiftyTwoWeekHigh")
-    low_52w = info.get("fiftyTwoWeekLow")
     raw_dy = info.get("dividendYield")
     if raw_dy is not None:
         val_dy = float(raw_dy)
@@ -341,14 +381,29 @@ def get_ground_truth_context(ticker: str) -> dict:
     else:
         div_yield = None
 
-    # --- Margin & profitability ---
+    # Margin & profitability with statement fallbacks
     gross_margin_pct = round(float(info.get("grossMargins")) * 100, 2) if info.get("grossMargins") else None
     opm = round(float(info.get("operatingMargins")) * 100, 2) if info.get("operatingMargins") else None
     pm = round(float(info.get("profitMargins")) * 100, 2) if info.get("profitMargins") else None
     roe = round(float(info.get("returnOnEquity")) * 100, 2) if info.get("returnOnEquity") else None
     roa = round(float(info.get("returnOnAssets")) * 100, 2) if info.get("returnOnAssets") else None
 
-    # --- Balance sheet ---
+    total_revenue = info.get("totalRevenue")
+    if inc is not None and not inc.empty:
+        if not total_revenue and "Total Revenue" in inc.index:
+            total_revenue = float(inc.loc["Total Revenue"].iloc[0])
+        if total_revenue and total_revenue > 0:
+            if gross_margin_pct is None and "Gross Profit" in inc.index:
+                gp = float(inc.loc["Gross Profit"].iloc[0])
+                gross_margin_pct = round((gp / total_revenue) * 100, 2)
+            if opm is None and "Operating Income" in inc.index:
+                oi = float(inc.loc["Operating Income"].iloc[0])
+                opm = round((oi / total_revenue) * 100, 2)
+            if pm is None and "Net Income" in inc.index:
+                ni = float(inc.loc["Net Income"].iloc[0])
+                pm = round((ni / total_revenue) * 100, 2)
+
+    # Balance sheet with statement fallbacks
     de_ratio_raw = info.get("debtToEquity")
     de_ratio = round(float(de_ratio_raw) / 100.0, 2) if de_ratio_raw else None
     current_ratio = round(float(info.get("currentRatio")), 2) if info.get("currentRatio") else None
@@ -356,15 +411,39 @@ def get_ground_truth_context(ticker: str) -> dict:
     total_debt = info.get("totalDebt")
     fcf = info.get("freeCashflow")
     op_cashflow = info.get("operatingCashflow")
-    total_revenue = info.get("totalRevenue")
     ebitda = info.get("ebitda")
 
-    # --- Growth ---
+    if bs is not None and not bs.empty:
+        if de_ratio is None:
+            debt = float(bs.loc["Total Debt"].iloc[0]) if "Total Debt" in bs.index else None
+            eq = float(bs.loc["Stockholders Equity"].iloc[0]) if "Stockholders Equity" in bs.index else None
+            if debt and eq and eq > 0:
+                de_ratio = round(debt / eq, 2)
+        if current_ratio is None:
+            ca = float(bs.loc["Current Assets"].iloc[0]) if "Current Assets" in bs.index else None
+            cl = float(bs.loc["Current Liabilities"].iloc[0]) if "Current Liabilities" in bs.index else None
+            if ca and cl and cl > 0:
+                current_ratio = round(ca / cl, 2)
+        if total_debt is None and "Total Debt" in bs.index:
+            total_debt = float(bs.loc["Total Debt"].iloc[0])
+        if total_cash is None and "Cash And Cash Equivalents" in bs.index:
+            total_cash = float(bs.loc["Cash And Cash Equivalents"].iloc[0])
+
+    # Growth
     rev_growth_yoy = round(float(info.get("revenueGrowth")) * 100, 2) if info.get("revenueGrowth") else None
     earnings_growth = round(float(info.get("earningsGrowth")) * 100, 2) if info.get("earningsGrowth") else None
 
+    if rev_growth_yoy is None and inc is not None and not inc.empty and "Total Revenue" in inc.index:
+        revs = inc.loc["Total Revenue"]
+        if len(revs) >= 2 and revs.iloc[1] > 0:
+            rev_growth_yoy = round(((revs.iloc[0] - revs.iloc[1]) / revs.iloc[1]) * 100, 2)
+
     # Derived: FCF margin
     fcf_margin = round(fcf / total_revenue * 100, 2) if fcf and total_revenue and total_revenue > 0 else None
+
+    # Price to book fallback
+    if pb is None and cur_price and book_value and book_value > 0:
+        pb = round(cur_price / book_value, 2)
 
     macro_text = (
         "Economy: India | Central Bank: Reserve Bank of India (RBI) | Policy Repo Rate: 6.50% | "
@@ -374,7 +453,7 @@ def get_ground_truth_context(ticker: str) -> dict:
         "US CPI Inflation: 2.5% - 2.8% | Real GDP Growth Rate: 2.5% - 2.8% | Benchmark: S&P 500"
     )
 
-    return {
+    data = {
         "symbol": ticker.upper(),
         "clean_symbol": clean_ticker,
         "company_name": info.get("longName") or info.get("shortName") or ticker.upper(),
@@ -420,4 +499,7 @@ def get_ground_truth_context(ticker: str) -> dict:
         "is_indian": is_indian,
         "macro_benchmark": macro_text,
     }
+
+    _GROUND_TRUTH_CACHE[cache_key] = {"data": data, "cached_at": now_ts}
+    return data
 

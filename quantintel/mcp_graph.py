@@ -137,6 +137,8 @@ class McpQuantIntelGraph:
         
         # Execute all 4 agents with max 2 concurrent in-flight requests using Semaphore(2)
         sem = asyncio.Semaphore(2)
+        import json
+        gt_json = json.dumps(gt) if gt else ""
 
         async def _run_throttled(tool_name: str) -> str:
             async with sem:
@@ -145,7 +147,8 @@ class McpQuantIntelGraph:
                     timeout=150.0,
                     ticker=ticker,
                     trade_date=trade_date,
-                    api_key=self.api_key
+                    api_key=self.api_key,
+                    ground_truth=gt_json,
                 )
 
         tasks = [
@@ -219,6 +222,7 @@ class McpQuantIntelGraph:
                 "sentiment_report": state.get("sentiment_report", ""),
                 "technical_report": state.get("technical_report", ""),
                 "api_key": self.api_key,
+                "ground_truth": json.dumps(state.get("ground_truth") or {}),
             }
             
             # Look for ask_risk_agent tool
@@ -406,13 +410,14 @@ Synthesize ALL signals and resolve conflicts using this weighting:
 5. DEFINITIVE STANCE: Do NOT default to HOLD just because signals are mixed. Take a DEFINITIVE stance: BUY, HOLD, or SELL.
 6. CROSS-CHECK: If any agent report contradicts the GROUND TRUTH numbers above, override with the GROUND TRUTH values.
 
-Provide your FINAL RECOMMENDATION with:
-1. Brief summary of key signals from each agent (strictly citing the verified ground truth data)
-2. Conflict resolution (why this signal wins, considering user's {user_risk_tol} risk tolerance and {user_horizon} horizon)
-3. Clear BUY/HOLD/SELL decision
-4. Conviction level (0.0-1.0)
-5. Top 2-3 risks to monitor
-6. Portfolio fit (how this position aligns with user's {user_risk_tol} risk tolerance and {user_horizon} horizon)
+Provide your FINAL RECOMMENDATION with exhaustive institutional depth (at least 600-850 words):
+1. Executive Verdict & Core Rationale: Definitive BUY, HOLD, or SELL stance with exact conviction score (0.0-1.0) and deep multi-paragraph strategic synthesis.
+2. Comprehensive Agent Signal Breakdown: Detailed, substantive paragraph for EACH of the 5 agents (Fundamentals, Sentiment, Technical, Macro, Risk), strictly citing the verified ground truth data.
+3. Conflict Resolution & Mandate Fit: In-depth rationale resolving trade-offs between valuation, trend, and macro regimes tailored specifically to user's {user_risk_tol} risk tolerance and {user_horizon} horizon.
+4. Top 3 Strategic Risks to Monitor: Exhaustive explanation of specific trigger thresholds, tail-risk scenarios, and downside boundaries.
+5. Portfolio Allocation & Execution Parameters: Concrete position sizing guidelines, defensive stop-loss price levels, and monitoring catalysts.
+
+CRITICAL FORMATTING & DEPTH RULE: Deliver an exhaustive, Wall Street equity research caliber executive verdict. Do NOT write single-line summaries or brief superficial bullets.
 
 End your response with EXACTLY this structured tag block at the very bottom:
 FINAL_VERDICT: BUY | HOLD | SELL
