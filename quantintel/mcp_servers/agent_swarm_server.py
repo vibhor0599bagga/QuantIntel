@@ -166,16 +166,37 @@ async def ask_macro_agent(ticker: str, trade_date: str, api_key: str = "") -> st
     runner = _get_runner("macro", api_key)
     return await runner(ticker, trade_date)
 
+# Dynamic in-memory user portfolio profile (updated at runtime from dashboard)
+_active_user_portfolio = {
+    "sector_exposure": "diversified",
+    "horizon": "medium_term",
+    "risk_tolerance": "moderate",
+    "holdings": []
+}
+
+@mcp.tool()
+async def update_user_portfolio(
+    sector_exposure: str = "diversified",
+    horizon: str = "medium_term",
+    risk_tolerance: str = "moderate",
+    holdings: list = None
+) -> str:
+    """Updates the user's active portfolio context, time horizon, and risk tolerance mandate on the MCP server."""
+    global _active_user_portfolio
+    _active_user_portfolio = {
+        "sector_exposure": sector_exposure,
+        "horizon": horizon,
+        "risk_tolerance": risk_tolerance,
+        "holdings": holdings if holdings is not None else []
+    }
+    return f"Active user portfolio updated: {_active_user_portfolio}"
+
 # Expose a resource over MCP
 @mcp.resource("portfolio://user/current")
 def get_user_portfolio() -> str:
     """Returns the user's current portfolio and risk tolerance limits."""
-    return str({
-        "sector_exposure": "Tech Heavy",
-        "horizon": "Long Term",
-        "risk_tolerance": "moderate",
-        "holdings": ["AAPL", "MSFT"]
-    })
+    import json
+    return json.dumps(_active_user_portfolio)
 
 if __name__ == "__main__":
     mcp.run()

@@ -119,6 +119,21 @@ class McpQuantIntelGraph:
         print("[PHASE 1] PARALLEL DATA GATHERING (All 4 agents run concurrently)")
         print(f"[GROUND TRUTH] Ticker: {ticker} | Price: {gt.get('price')} | P/E: {gt.get('trailing_pe')} | Sector: {gt.get('actual_sector')}")
         print("="*80)
+
+        # Synchronize user portfolio context from dashboard to MCP server
+        user_portfolio = state.get("portfolio_context") or {}
+        if user_portfolio and "update_user_portfolio" in self.tools_dict:
+            try:
+                await self._execute_tool(
+                    "update_user_portfolio",
+                    sector_exposure=user_portfolio.get("sector_exposure", "diversified"),
+                    horizon=user_portfolio.get("horizon", "medium_term"),
+                    risk_tolerance=user_portfolio.get("risk_tolerance", "moderate"),
+                    holdings=user_portfolio.get("holdings", [])
+                )
+                print(f"[Portfolio Sync] Synchronized dashboard portfolio to MCP server: {user_portfolio}")
+            except Exception as e:
+                print(f"[Portfolio Sync] Warning syncing user portfolio: {e}")
         
         # Execute all 4 agents with max 2 concurrent in-flight requests using Semaphore(2)
         sem = asyncio.Semaphore(2)
@@ -251,11 +266,46 @@ class McpQuantIntelGraph:
         ticker = state["ticker"]
         trade_date = state["trade_date"]
         
-        try:
-            portfolio = await get_mcp_resource(self.session, "portfolio://user/current")
-        except Exception:
-            portfolio = str(state.get("portfolio_context", {}))
+        # 1. Prioritize user portfolio context selected on the frontend dashboard
+        user_portfolio = state.get("portfolio_context") or {}
         
+        # 2. If missing or empty in state, fallback to MCP server resource
+        if not user_portfolio or not any(user_portfolio.values()):
+            try:
+                portfolio_raw = await get_mcp_resource(self.session, "portfolio://user/current")
+                try:
+                    import json
+                    user_portfolio = json.loads(portfolio_raw)
+                except Exception:
+                    import ast
+                    user_portfolio = ast.literal_eval(portfolio_raw)
+            except Exception:
+                user_portfolio = {
+                    "sector_exposure": "diversified",
+                    "horizon": "medium_term",
+                    "risk_tolerance": "moderate",
+                    "holdings": []
+                }
+        else:
+            # Sync user's runtime dashboard settings to MCP server so MCP resource matches
+            if "update_user_portfolio" in self.tools_dict:
+                try:
+                    await self._execute_tool(
+                        "update_user_portfolio",
+                        sector_exposure=user_portfolio.get("sector_exposure", "diversified"),
+                        horizon=user_portfolio.get("horizon", "medium_term"),
+                        risk_tolerance=user_portfolio.get("risk_tolerance", "moderate"),
+                        holdings=user_portfolio.get("holdings", [])
+                    )
+                except Exception:
+                    pass
+
+        portfolio = user_portfolio if isinstance(user_portfolio, dict) else {}
+        user_risk_tol = portfolio.get("risk_tolerance", "moderate")
+        user_horizon = portfolio.get("horizon", "medium_term")
+        user_sector_bias = portfolio.get("sector_exposure", "diversified")
+        user_holdings = portfolio.get("holdings", [])
+
         # Retrieve verified ground truth facts from state or pre-flight fetch
         gt = state.get("ground_truth") or {}
         if not gt:
@@ -283,7 +333,7 @@ You are the Supervisor Agent in QuantIntel. All 5 institutional agents have comp
 === TARGET ASSET IDENTITY & VERIFIED FACTS (GROUND TRUTH) ===
 • Asset: {ticker} ({gt.get('company_name', ticker)})
 • True Sector: {actual_sector} | Industry: {actual_industry}
-  [NOTE: The company operates in {actual_sector}. Do NOT confuse this with the user's personal portfolio strategy preference ({portfolio}).]
+  [NOTE: The company operates in {actual_sector}. Do NOT confuse this with the user's personal portfolio strategy preference ({user_sector_bias}).]
 • Current Market Price: {price_str}
 • Trailing P/E: {pe_str} | Forward P/E: {fwd_pe_str} | Trailing EPS: {eps_str}
 • Debt-to-Equity Ratio: {de_str}
@@ -291,6 +341,19 @@ You are the Supervisor Agent in QuantIntel. All 5 institutional agents have comp
 • Actual 1-Year Historical Stock Performance: {ret_1y_str}
 • Beta (Relative to Market Benchmark): {beta_str}
 • Domestic Macro Reference: {macro_benchmark}
+
+=== USER PORTFOLIO SETTINGS & MANDATE (CONFIGURED ON DASHBOARD) ===
+• User Risk Tolerance: {user_risk_tol.upper()}
+• User Investment Horizon: {user_horizon.upper()}
+• User Target Strategy / Sector Tilt: {user_sector_bias}
+• Existing Holdings: {user_holdings}
+
+MANDATE INSTRUCTIONS:
+- Directly incorporate the user's chosen Risk Tolerance ({user_risk_tol}) and Horizon ({user_horizon}) into your recommendation:
+  * If risk tolerance is CONSERVATIVE: Demand higher safety margin, penalize high drawdown or volatility, prioritize capital preservation.
+  * If risk tolerance is AGGRESSIVE: Weigh growth potential and price momentum more favorably.
+  * If horizon is SHORT_TERM: Focus on technical levels, momentum indicators, and short-term news catalysts.
+  * If horizon is LONG_TERM: Focus on intrinsic value, earnings quality, and durable competitive advantages.
 
 === PHASE 1 RESULTS (Parallel Execution) ===
 
@@ -321,16 +384,17 @@ Synthesize ALL signals and resolve conflicts using this weighting:
 === CRITICAL ANTI-HALLUCINATION RULES ===
 1. GROUNDING ON NUMBERS: You must ONLY cite the verified financial metrics provided above in GROUND TRUTH (e.g. Trailing P/E of {pe_str}, D/E of {de_str}, 1-Year Return of {ret_1y_str}). DO NOT invent, estimate, or hallucinate fictitious percentage growth rates or margins.
 2. BETA FORMATTING: Beta is a unitless relative sensitivity coefficient ({beta_str}). NEVER format beta as a percentage (e.g. NEVER say "10% beta").
-3. SECTOR ACCURACY: The company's actual sector is {actual_sector}. Do NOT describe it as a "Tech Heavy" company.
+3. SECTOR ACCURACY: The company's actual sector is {actual_sector}. Do NOT describe it as a "{user_sector_bias}" company.
 4. MACRO ACCURACY: Use the domestic macroeconomic numbers ({macro_benchmark}). Do not apply US inflation targets (2%) to Indian equities.
 5. DEFINITIVE STANCE: Do NOT default to HOLD just because signals are mixed. Take a DEFINITIVE stance: BUY, HOLD, or SELL.
 
 Provide your FINAL RECOMMENDATION with:
 1. Brief summary of key signals from each agent (strictly citing the verified ground truth data)
-2. Conflict resolution (why this signal wins)
+2. Conflict resolution (why this signal wins, considering user's {user_risk_tol} risk tolerance and {user_horizon} horizon)
 3. Clear BUY/HOLD/SELL decision
 4. Conviction level (0.0-1.0)
 5. Top 2-3 risks to monitor
+6. Portfolio fit (how this position aligns with user's {user_risk_tol} risk tolerance and {user_horizon} horizon)
 
 End your response with EXACTLY this structured tag block at the very bottom:
 FINAL_VERDICT: BUY | HOLD | SELL
