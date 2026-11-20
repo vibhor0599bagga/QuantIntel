@@ -163,37 +163,71 @@ def get_fundamentals(ticker, curr_date=None):
         if not info:
             return f"No fundamentals data for '{ticker}'"
 
+        def _fmt_money(v):
+            if v is None: return "N/A"
+            if abs(v) >= 1e12: return f"${v/1e12:,.2f}T ({v:,.0f})"
+            if abs(v) >= 1e9:  return f"${v/1e9:,.2f}B ({v:,.0f})"
+            if abs(v) >= 1e6:  return f"${v/1e6:,.2f}M ({v:,.0f})"
+            return f"${v:,.2f}"
+
+        def _fmt_pct(v):
+            if v is None: return "N/A"
+            return f"{float(v)*100:.2f}%"
+
+        def _fmt_mult(v):
+            if v is None: return "N/A"
+            return f"{float(v):.2f}x"
+
+        def _fmt_div_yield(dy):
+            if dy is None: return "0.00%"
+            val = float(dy)
+            # In yfinance, dividendYield is often already in percent (e.g. 0.69 means 0.69%)
+            if val < 0.05:
+                return f"{val * 100:.2f}%"
+            return f"{val:.2f}%"
+
+        # Debt to equity in yfinance info is typically percentage (e.g. 14.306 = 14.31% = 0.14x)
+        de_raw = info.get("debtToEquity")
+        de_str = f"{float(de_raw)/100.0:.2f}x ({de_raw:.2f}%)" if de_raw is not None else "N/A"
+
+        cur_price = info.get("currentPrice") or info.get("regularMarketPrice")
+
         fields = [
-            ("Name",             info.get("longName")),
-            ("Sector",           info.get("sector")),
-            ("Industry",         info.get("industry")),
-            ("Market Cap",       info.get("marketCap")),
-            ("PE Ratio (TTM)",   info.get("trailingPE")),
-            ("Forward PE",       info.get("forwardPE")),
-            ("PEG Ratio",        info.get("pegRatio")),
-            ("Price to Book",    info.get("priceToBook")),
-            ("EPS (TTM)",        info.get("trailingEps")),
-            ("Forward EPS",      info.get("forwardEps")),
-            ("Dividend Yield",   info.get("dividendYield")),
-            ("Beta",             info.get("beta")),
-            ("52W High",         info.get("fiftyTwoWeekHigh")),
-            ("52W Low",          info.get("fiftyTwoWeekLow")),
-            ("Revenue (TTM)",    info.get("totalRevenue")),
-            ("Gross Profit",     info.get("grossProfits")),
-            ("EBITDA",           info.get("ebitda")),
-            ("Net Income",       info.get("netIncomeToCommon")),
-            ("Profit Margin",    info.get("profitMargins")),
-            ("Operating Margin", info.get("operatingMargins")),
-            ("ROE",              info.get("returnOnEquity")),
-            ("ROA",              info.get("returnOnAssets")),
-            ("Debt/Equity",      info.get("debtToEquity")),
-            ("Current Ratio",    info.get("currentRatio")),
-            ("Free Cash Flow",   info.get("freeCashflow")),
+            ("Company Name",           info.get("longName") or info.get("shortName")),
+            ("Sector",                 info.get("sector")),
+            ("Industry",               info.get("industry")),
+            ("Current Stock Price",    f"${cur_price:,.2f}" if cur_price else "N/A"),
+            ("Market Cap",             _fmt_money(info.get("marketCap"))),
+            ("PE Ratio (Trailing TTM)", _fmt_mult(info.get("trailingPE"))),
+            ("Forward PE",             _fmt_mult(info.get("forwardPE"))),
+            ("PEG Ratio",              f"{info.get('pegRatio'):.2f}" if info.get("pegRatio") else "N/A"),
+            ("Price to Book (P/B)",    _fmt_mult(info.get("priceToBook"))),
+            ("Book Value per Share",   f"${info.get('bookValue'):.2f}" if info.get("bookValue") else "N/A"),
+            ("EPS (Trailing TTM)",     f"${info.get('trailingEps'):.2f}" if info.get("trailingEps") else "N/A"),
+            ("Forward EPS",            f"${info.get('forwardEps'):.2f}" if info.get("forwardEps") else "N/A"),
+            ("Dividend Yield",         _fmt_div_yield(info.get("dividendYield"))),
+            ("Beta (Relative to Mkt)", f"{info.get('beta'):.2f}" if info.get("beta") else "1.00"),
+            ("52-Week High",           f"${info.get('fiftyTwoWeekHigh'):,.2f}" if info.get("fiftyTwoWeekHigh") else "N/A"),
+            ("52-Week Low",            f"${info.get('fiftyTwoWeekLow'):,.2f}" if info.get("fiftyTwoWeekLow") else "N/A"),
+            ("Total Revenue (TTM)",    _fmt_money(info.get("totalRevenue"))),
+            ("Revenue Growth (YoY)",   _fmt_pct(info.get("revenueGrowth"))),
+            ("Gross Profit (TTM)",     _fmt_money(info.get("grossProfits") or info.get("grossProfit"))),
+            ("Gross Margin",           _fmt_pct(info.get("grossMargins"))),
+            ("Operating Margin",       _fmt_pct(info.get("operatingMargins"))),
+            ("Net Profit Margin",      _fmt_pct(info.get("profitMargins"))),
+            ("EBITDA",                 _fmt_money(info.get("ebitda"))),
+            ("Net Income to Common",   _fmt_money(info.get("netIncomeToCommon"))),
+            ("Return on Equity (ROE)", _fmt_pct(info.get("returnOnEquity"))),
+            ("Return on Assets (ROA)", _fmt_pct(info.get("returnOnAssets"))),
+            ("Debt-to-Equity Ratio",   de_str),
+            ("Current Ratio",          f"{info.get('currentRatio'):.2f}" if info.get("currentRatio") else "N/A"),
+            ("Operating Cash Flow",    _fmt_money(info.get("operatingCashflow"))),
+            ("Free Cash Flow (FCF)",   _fmt_money(info.get("freeCashflow"))),
         ]
 
-        lines  = [f"{label}: {val}" for label, val in fields if val is not None]
-        header = f"# Fundamentals for {clean_ticker}\n"
-        header += f"# Retrieved: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+        lines  = [f"{label}: {val}" for label, val in fields if val is not None and val != "N/A"]
+        header = f"# Institutional Fundamentals for {clean_ticker}\n"
+        header += f"# Retrieved from Yahoo Finance: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
         return header + "\n".join(lines)
 
     except Exception as e:
@@ -300,7 +334,12 @@ def get_ground_truth_context(ticker: str) -> dict:
     beta_val = round(float(info.get("beta")), 2) if info.get("beta") else 1.0
     high_52w = info.get("fiftyTwoWeekHigh")
     low_52w = info.get("fiftyTwoWeekLow")
-    div_yield = round(float(info.get("dividendYield")) * 100, 2) if info.get("dividendYield") else None
+    raw_dy = info.get("dividendYield")
+    if raw_dy is not None:
+        val_dy = float(raw_dy)
+        div_yield = round(val_dy * 100, 2) if val_dy < 0.05 else round(val_dy, 2)
+    else:
+        div_yield = None
 
     # --- Margin & profitability ---
     gross_margin_pct = round(float(info.get("grossMargins")) * 100, 2) if info.get("grossMargins") else None
