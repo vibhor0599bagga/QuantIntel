@@ -237,9 +237,6 @@ PRIMARY_RISK: Macroeconomic rate sensitivity and sector-wide multiple compressio
   return text || "Report generated.";
 };
 
-  return text || "Report generated.";
-};
-
 export default function Home() {
   const [apiStatus, setApiStatus] = useState<"connected" | "connecting" | "offline">("connecting");
   const [apiUrl, setApiUrl] = useState("https://quantintel.onrender.com");
